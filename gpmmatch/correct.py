@@ -32,7 +32,7 @@ def correct_parallax(sr_x, sr_y, gpmset):
 
     # calculate x,y-differences between ground coordinate
     # and center ground coordinate [25th element]
-    center = int(np.floor(len(sr_x[-1]) / 2.))
+    center = int(np.floor(len(sr_x[-1]) / 2.0))
     xdiff = sr_x - sr_x[:, center][:, np.newaxis]
     ydiff = sr_y - sr_y[:, center][:, np.newaxis]
 
@@ -97,40 +97,76 @@ def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band='S'):
     zbb = np.repeat(zbb[:, :, np.newaxis], zp.shape[2], axis=2)
     bbwidth = np.repeat(bbwidth[:, :, np.newaxis], zp.shape[2], axis=2)
 
-    zmlt = zbb + bbwidth / 2.  # APPROXIMATION!
-    zmlb = zbb - bbwidth / 2.  # APPROXIMATION!
+    zmlt = zbb + bbwidth / 2.0  # APPROXIMATION!
+    zmlb = zbb - bbwidth / 2.0  # APPROXIMATION!
     ratio = (zp - zmlb) / (zmlt - zmlb)
 
-    pos = (ratio >= 1)
+    pos = ratio >= 1
     # above melting layer
     if pos.sum() > 0:
-        dfrs = as0[10] + as1[10] * refp[pos] + as2[10] * refp[pos] ** 2 + as3[10] * refp[pos] ** 3 + as4[10] * refp[pos] ** 4
-        dfrh = ah0[10] + ah1[10] * refp[pos] + ah2[10] * refp[pos] ** 2 + ah3[10] * refp[pos] ** 3 + ah4[10] * refp[pos] ** 4
+        dfrs = (
+            as0[10]
+            + as1[10] * refp[pos]
+            + as2[10] * refp[pos] ** 2
+            + as3[10] * refp[pos] ** 3
+            + as4[10] * refp[pos] ** 4
+        )
+        dfrh = (
+            ah0[10]
+            + ah1[10] * refp[pos]
+            + ah2[10] * refp[pos] ** 2
+            + ah3[10] * refp[pos] ** 3
+            + ah4[10] * refp[pos] ** 4
+        )
         refp_ss[pos] = refp[pos] + dfrs
         refp_sh[pos] = refp[pos] + dfrh
 
-    pos = (ratio <= 0)
-    if pos.sum() > 0: # below the melting layer
-        dfrs = as0[0] + as1[0] * refp[pos] + as2[0] * refp[pos]**2 + as3[0] * refp[pos]**3 + as4[0] * refp[pos]**4
-        dfrh = ah0[0] + ah1[0] * refp[pos] + ah2[0] * refp[pos]**2 + ah3[0] * refp[pos]**3 + ah4[0] * refp[pos]**4
+    pos = ratio <= 0
+    if pos.sum() > 0:  # below the melting layer
+        dfrs = (
+            as0[0]
+            + as1[0] * refp[pos]
+            + as2[0] * refp[pos] ** 2
+            + as3[0] * refp[pos] ** 3
+            + as4[0] * refp[pos] ** 4
+        )
+        dfrh = (
+            ah0[0]
+            + ah1[0] * refp[pos]
+            + ah2[0] * refp[pos] ** 2
+            + ah3[0] * refp[pos] ** 3
+            + ah4[0] * refp[pos] ** 4
+        )
         refp_ss[pos] = refp[pos] + dfrs
         refp_sh[pos] = refp[pos] + dfrh
 
-    pos = ((ratio > 0) & (ratio < 1))
+    pos = (ratio > 0) & (ratio < 1)
     if pos.sum() > 0:  # within the melting layer
         ind = np.round(ratio[pos]).astype(int)[0]
-        dfrs = as0[ind] + as1[ind] * refp[pos] + as2[ind] * refp[pos] ** 2 + as3[ind] * refp[pos] ** 3 + as4[ind] * refp[pos] ** 4
-        dfrh = ah0[ind] + ah1[ind] * refp[pos] + ah2[ind] * refp[pos] ** 2 + ah3[ind] * refp[pos] ** 3 + ah4[ind] * refp[pos] ** 4
+        dfrs = (
+            as0[ind]
+            + as1[ind] * refp[pos]
+            + as2[ind] * refp[pos] ** 2
+            + as3[ind] * refp[pos] ** 3
+            + as4[ind] * refp[pos] ** 4
+        )
+        dfrh = (
+            ah0[ind]
+            + ah1[ind] * refp[pos]
+            + ah2[ind] * refp[pos] ** 2
+            + ah3[ind] * refp[pos] ** 3
+            + ah4[ind] * refp[pos] ** 4
+        )
         refp_ss[pos] = refp[pos] + dfrs
         refp_sh[pos] = refp[pos] + dfrh
 
     # Jackson Tan's fix for C-band
-    if radar_band == 'C':
+    if radar_band == "C":
         deltas = 5.3 / 10.0 * (refp_ss - refp)
         refp_ss = refp + deltas
         deltah = 5.3 / 10.0 * (refp_sh - refp)
         refp_sh = refp + deltah
-    elif radar_band == 'X':
+    elif radar_band == "X":
         deltas = 3.2 / 10.0 * (refp_ss - refp)
         refp_ss = refp + deltas
         deltah = 3.2 / 10.0 * (refp_sh - refp)
