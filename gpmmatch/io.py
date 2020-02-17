@@ -7,7 +7,7 @@ import pyproj
 import numpy as np
 import xarray as xr
 
-import correct
+from . import correct
 
 
 class NoPrecipitationError(Exception):
