@@ -1,3 +1,17 @@
+'''
+Utilities to read the input data and format them in a way to be read by
+volume_matching.
+
+@title: io
+@author: Valentin Louf <valentin.louf@bom.gov.au>
+@institutions: Monash University and the Australian Bureau of Meteorology
+@creation: 17/02/2020
+@date: 17/02/2020
+    NoPrecipitationError
+    get_gpm_orbit
+    read_GPM
+    data_load_and_checks
+'''
 import re
 import datetime
 

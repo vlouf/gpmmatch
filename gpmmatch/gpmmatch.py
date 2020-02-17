@@ -1,3 +1,14 @@
+'''
+Volume matching of ground radar and GPM satellite.
+
+@title: gpmmatch
+@author: Valentin Louf <valentin.louf@bom.gov.au>
+@institutions: Monash University and the Australian Bureau of Meteorology
+@creation: 17/02/2020
+@date: 17/02/2020
+    get_metadata
+    volume_matching
+'''
 import os
 import uuid
 import datetime

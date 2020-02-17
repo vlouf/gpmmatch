@@ -1,3 +1,15 @@
+'''
+Various utilities for correction and conversion of satellite data.
+
+@title: correct
+@author: Valentin Louf <valentin.louf@bom.gov.au>
+@institutions: Monash University and the Australian Bureau of Meteorology
+@creation: 17/02/2020
+@date: 17/02/2020
+    correct_parallax
+    convert_sat_refl_to_gr_band
+    compute_gaussian_curvature
+'''
 import numpy as np
 
 
