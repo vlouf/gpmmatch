@@ -5,7 +5,7 @@ Volume matching of ground radar and GPM satellite.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 24/02/2020
+@date: 04/03/2020
     volume_matching
 '''
 import os
@@ -84,9 +84,9 @@ def volume_matching(gpmfile,
     R, A = np.meshgrid(radar.range['data'], radar.azimuth['data'])
 
     try:
-        ground_radar_reflectivity = radar.fields['total_power']['data'].filled(np.NaN)
+        ground_radar_reflectivity = radar.fields[refl_name]['data'].filled(np.NaN)
     except Exception:
-        ground_radar_reflectivity = radar.fields['total_power']['data']
+        ground_radar_reflectivity = radar.fields[refl_name]['data']
     ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
     ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
 
@@ -113,8 +113,15 @@ def volume_matching(gpmfile,
     volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth) / 2) ** 2  # km3
     volgr = 1e-9 * np.pi * dr * (R * np.pi / 180 * bwr / 2) ** 2  # km3
 
+    # Compute Path-integrated reflectivities
+    pir_gr = 10 * np.log10(np.cumsum((10 ** (ground_radar_reflectivity / 10)).filled(0), axis=1) * dr)
+    pir_gr = np.ma.masked_invalid(pir_gr)
+
+    pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * 125)
+    pir_gpm = np.ma.masked_invalid(pir_gpm)
+
     # Initialising output data.
-    datakeys = ['refl_gpm_raw', 'refl_gr_weigthed', 'refl_gpm_strat', 'refl_gpm_conv',
+    datakeys = ['refl_gpm_raw', 'refl_gr_weigthed', 'refl_gpm_strat', 'refl_gpm_conv', 'pir_gpm', 'pir_gr',
                 'refl_gr_raw', 'std_refl_gpm', 'std_refl_gr', 'zrefl_gpm_raw', 'zrefl_gr_weigthed', 'zrefl_gpm_strat',
                 'zrefl_gpm_conv', 'zrefl_gr_raw', 'std_zrefl_gpm', 'std_zrefl_gr', 'sample_gpm', 'reject_gpm',
                 'sample_gr', 'reject_gr', 'volume_match_gpm', 'volume_match_gr']
@@ -158,6 +165,7 @@ def volume_matching(gpmfile,
         data['refl_gpm_raw'][ii, jj] = np.nanmean(refl_gpm)
         data['refl_gpm_strat'][ii, jj] = np.nanmean(refl_gpm_s)
         data['refl_gpm_conv'][ii, jj] = np.nanmean(refl_gpm_c)
+        data['pir_gpm'][ii, jj] = np.nanmean(pir_gpm[ii, epos].flatten())
         data['std_refl_gpm'][ii, jj] = np.nanstd(refl_gpm)
 
         data['zrefl_gpm_raw'][ii, jj] = 10 * np.log10(np.nanmean(10 ** (refl_gpm / 10)))
@@ -184,13 +192,12 @@ def volume_matching(gpmfile,
 
         data['refl_gr_weigthed'][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
         data['refl_gr_raw'][ii, jj] = np.mean(refl_gr_raw)
+        data['refl_gr_raw'][ii, jj] = np.mean(pir_gr[sl][rpos].flatten())
 
         data['zrefl_gr_weigthed'][ii, jj] = 10 * np.log10(np.sum(w * zrefl_gr_raw) / np.sum(w[~refl_gr_raw.mask]))
         data['zrefl_gr_raw'][ii, jj] = 10 * np.log10(np.mean(zrefl_gr_raw))
-
         data['std_refl_gr'][ii, jj] = np.std(refl_gr_raw)
         data['std_zrefl_gr'][ii, jj] = 10 * np.log10(np.std(10 ** (refl_gr_raw / 10)))
-
         data['sample_gr'][ii, jj] = np.sum(~refl_gr_raw.mask)
 
     data['x'] = x

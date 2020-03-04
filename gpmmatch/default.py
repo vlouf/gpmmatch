@@ -147,5 +147,15 @@ def get_metadata():
             "long_name": "gpm_profile_number",
             "description": "Number of GPM profiles (nrays x nscan) used for volume matching.",
         },
+        "pir_gpm": {
+            "units": "dB m-1",
+            "long_name": "GPM_path_integrated_reflectivity",
+            "description": "Path integrated GPM reflectivity volume-matched.",
+        },
+        "pir_gr": {
+            "units": "dB m-1",
+            "long_name": "GR_path_integrated_reflectivity",
+            "description": "Path integrated GR reflectivity volume-matched.",
+        },
     }
     return metadata
