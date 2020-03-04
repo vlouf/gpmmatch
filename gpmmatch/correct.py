@@ -5,10 +5,11 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 17/02/2020
+@date: 04/03/2020
     correct_parallax
     convert_sat_refl_to_gr_band
     compute_gaussian_curvature
+    grid_displacement
 '''
 import numpy as np
 
@@ -216,3 +217,41 @@ def compute_gaussian_curvature(lat0):
     ae = (4 / 3.) * ag
 
     return ae
+
+
+def grid_displacement(field1, field2):
+    """
+    Calculate the grid displacement using Phase correlation.
+    http://en.wikipedia.org/wiki/Phase_correlation
+
+    Parameters
+    ----------
+    field1, field2 : ndarray
+       Fields separated in time.
+
+    Returns
+    -------
+    displacement : two-tuple
+         integers if pixels, otherwise floats. Result of the calculation
+    """
+    #create copies of the data
+    ige1 = np.ma.masked_invalid(10 ** (field1 / 10)).filled(0)
+    ige2 = np.ma.masked_invalid(10 ** (field2 / 10)).filled(0)
+
+    # discrete fast fourier transformation and complex conjugation of image 2
+    image1FFT = np.fft.fft2(ige1)
+    image2FFT = np.conjugate(np.fft.fft2(ige2))
+
+    # inverse fourier transformation of product -> equal to cross correlation
+    imageCCor = np.real(np.fft.ifft2((image1FFT * image2FFT)))
+
+    # Shift the zero-frequency component to the center of the spectrum
+    imageCCorShift = np.fft.fftshift(imageCCor)
+    row, col = ige1.shape
+
+    #find the peak in the correlation
+    yShift, xShift = np.unravel_index(np.argmax(imageCCorShift), (row,col))
+    yShift -= row // 2
+    xShift -= col // 2
+
+    return (xShift, yShift)
