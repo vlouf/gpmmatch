@@ -63,7 +63,7 @@ def correct_parallax(sr_x, sr_y, gpmset):
     return sr_xp, sr_yp, z_sr
 
 
-def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band='S'):
+def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band=None):
     """
     Convert the satellite reflectivity to S, C, or X-band using the Cao et al.
     (2013) method.
@@ -88,6 +88,8 @@ def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band='S'):
     refp_sh:
         Convective reflectivity conversion from Ku-band to S-band
     """
+    if radar_band not in ['S', 'C', 'X']:
+        raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
 
     refp_ss = np.zeros_like(refp) # snow
     refp_sh = np.zeros_like(refp) # hail

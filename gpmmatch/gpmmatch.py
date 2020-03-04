@@ -24,6 +24,8 @@ from .default import get_metadata
 
 def volume_matching(gpmfile,
                     grfile,
+                    grfile2=None,
+                    radar_band='C',
                     refl_name='corrected_reflectivity',
                     fname_prefix=None,
                     gr_beamwidth=1,
@@ -64,7 +66,7 @@ def volume_matching(gpmfile,
         output_dir = os.getcwd()
 
     bwr = gr_beamwidth
-    gpmset, radar = data_load_and_checks(gpmfile, grfile, refl_name=refl_name, gpm_refl_threshold=gpm_refl_threshold)
+    gpmset, radar = data_load_and_checks(gpmfile, grfile, grfile2=grfile2, refl_name=refl_name, gpm_refl_threshold=gpm_refl_threshold, radar_band=radar_band)
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
     if radar.elevation['data'].max() >= 80:
@@ -242,7 +244,6 @@ def volume_matching(gpmfile,
     matchset.attrs['radar_longitude'] = radar.longitude['data'][0]
     matchset.attrs['radar_latitude'] = radar.latitude['data'][0]
     matchset.attrs['gpm_orbit'] = gpmset.attrs['orbit']
-
     matchset.attrs['country'] = 'Australia'
     matchset.attrs['creator_email'] = 'valentin.louf@bom.gov.au'
     matchset.attrs['creator_name'] = 'Valentin Louf'
