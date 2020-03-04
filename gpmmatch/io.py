@@ -18,6 +18,7 @@ import datetime
 import h5py
 import pyart
 import pyproj
+import netCDF4
 import numpy as np
 import xarray as xr
 
