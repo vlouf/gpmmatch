@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 17/02/2020
+@date: 04/03/2020
     NoPrecipitationError
     get_gpm_orbit
     read_GPM
