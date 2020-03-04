@@ -144,6 +144,28 @@ def read_GPM(infile, refl_min_thld):
 
 
 def read_radar(grfile, grfile2, refl_name, gpm_time):
+    '''
+    Read ground radar data. If 2 files provided, then it will compute the
+    displacement between these two files and then correct for advection the
+    ground radar data in relation to the time of GPM exact overpass.
+
+    Parameters:
+    ===========
+    grfile: str
+        Ground radar input file.
+    grfile2: str (optionnal)
+        Second ground radar input file to compute grid displacement and
+        advection.
+    refl_name: str
+        Name of the reflectivity field in the ground radar data.
+    gpm_time: np.datetime64[s]
+        Datetime of GPM overpass.
+
+    Returns:
+    ========
+    radar: pyart.core.Radar
+        Pyart radar dataset, corrected for advection if grfile2 provided.
+    '''
     try:
         radar0 = pyart.io.read_cfradial(grfile, include_fields=[refl_name])
     except Exception:
@@ -214,6 +236,28 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
 
 
 def get_ground_radar_attributes(grfile):
+    '''
+    Read the ground radar attributes, latitude/longitude, altitude, range
+    min/max.
+
+    Parameter:
+    ==========
+    grfile: str
+        Input ground radar file.
+
+    Returns:
+    ========
+    grlon: float
+        Radar longitude.
+    grlat: float
+        Radar latitude.
+    gralt: float
+        Radar altitude.
+    rmin : float
+        Radar minimum range (cone of silence.)
+    rmax: float
+        Radar maximum range.
+    '''
     try:
         radar = pyart.io.read_cfradial(grfile, delay_field_loading=True)
     except Exception:
@@ -322,11 +366,11 @@ def data_load_and_checks(gpmfile,
                            'conv_reflectivity_grband': (('nscan', 'nray', 'nbin'), refp_conv)})
 
     gpmset.x.attrs['units'] = 'm'
-    gpmset.x.attrs['description'] = 'Cartesian distance along x-axis of satellite bin in relation to ground radar (0, 0), parallax corrected'
+    gpmset.x.attrs['description'] = 'x-axis parallax corrected coordinates in relation to ground radar.'
     gpmset.y.attrs['units'] = 'm'
-    gpmset.y.attrs['description'] = 'Cartesian distance along y-axis of satellite bin in relation to ground radar (0, 0), parallax corrected'
+    gpmset.y.attrs['description'] = 'y-axis parallax corrected coordinates in relation to ground radar.'
     gpmset.z.attrs['units'] = 'm'
-    gpmset.z.attrs['description'] = 'Cartesian distance along z-axis of satellite bin in relation to ground radar (0, 0), parallax corrected'
+    gpmset.z.attrs['description'] = 'z-axis parallax corrected coordinates in relation to ground radar.'
     gpmset.precip_in_gr_domain.attrs['units'] = 'bool'
     gpmset.precip_in_gr_domain.attrs['description'] = 'GPM data-columns with precipitation inside the ground radar scope.'
     gpmset.range_from_gr.attrs['units'] = 'm'
@@ -334,9 +378,9 @@ def data_load_and_checks(gpmfile,
     gpmset.elev_from_gr.attrs['units'] = 'degrees'
     gpmset.elev_from_gr.attrs['description'] = 'Elevation from satellite bins in relation to ground radar'
     gpmset.strat_reflectivity_grband.attrs['units'] = 'dBZ'
-    gpmset.strat_reflectivity_grband.attrs['description'] = 'Reflectivity of stratiform precipitation converted to ground radar frequency band.'
+    gpmset.strat_reflectivity_grband.attrs['description'] = f'Reflectivity of stratiform precipitation converted to {radar_band}-band.'
     gpmset.conv_reflectivity_grband.attrs['units'] = 'dBZ'
-    gpmset.conv_reflectivity_grband.attrs['description'] = 'Reflectivity of convective precipitation converted to ground radar frequency band.'
+    gpmset.conv_reflectivity_grband.attrs['description'] = f'Reflectivity of convective precipitation converted to {radar_band}-band.'
     gpmset.attrs['nprof'] = nprof
     gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
 
