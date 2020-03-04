@@ -143,7 +143,98 @@ def read_GPM(infile, refl_min_thld):
     return dset
 
 
-def data_load_and_checks(gpmfile, grfile, *, refl_name, gpm_refl_threshold):
+def read_radar(grfile, grfile2, refl_name, gpm_time):
+    try:
+        radar0 = pyart.io.read_cfradial(grfile, include_fields=[refl_name])
+    except Exception:
+        radar0 = pyart.aux_io.read_odim_h5(grfile, include_fields=[refl_name])
+
+    if grfile2 is None:
+        return radar0
+
+    rtime = netCDF4.num2date(radar0.time['data'], radar0.time['units']).astype('datetime64[s]')
+    timedelta = rtime - gpm_time
+
+    # grfile2 is not None here.
+    try:
+        radar1 = pyart.io.read_cfradial(grfile2, include_fields=[refl_name])
+    except Exception:
+        radar1 = pyart.aux_io.read_odim_h5(grfile2, include_fields=[refl_name])
+
+    t0 = netCDF4.num2date(radar0.time['data'][0], radar0.time['units'])
+    t1 = netCDF4.num2date(radar1.time['data'][0], radar1.time['units'])
+    if t1 > t0:
+        dt = (t1 - t0).seconds
+    else:
+        # It's a datetime object, so if it's not orderly sequential,
+        # it will returns days of difference.
+        dt = (t0 - t1).seconds
+
+    if dt > 1800:
+        raise ValueError(f"Cannot advect the ground radar data, the 2 input files are separated by more than 30min (dt = {dt}s).")
+
+    grid0 = pyart.map.grid_from_radars(radar0,
+                               grid_shape=(1, 801, 801),
+                               grid_limits=((2500, 25000),(-80000, 80000), (-80000, 80000)),
+                               fields=[refl_name],
+                               gridding_algo="map_gates_to_grid",
+                               constant_roi=1000,
+                               weighting_function='Barnes2')
+
+    grid1 = pyart.map.grid_from_radars(radar1,
+                                       grid_shape=(1, 801, 801),
+                                       grid_limits=((2500, 25000),(-80000, 80000), (-80000, 80000)),
+                                       fields=[refl_name],
+                                       gridding_algo="map_gates_to_grid",
+                                       constant_roi=1000,
+                                       weighting_function='Barnes2')
+
+    r0 = np.squeeze(grid0.fields[refl_name]['data'])
+    r1 = np.squeeze(grid1.fields[refl_name]['data'])
+    x = np.squeeze(grid0.point_x['data'])
+    y = np.squeeze(grid0.point_y['data'])
+    pos = np.sqrt(x ** 2 + y ** 2) < 20e3
+    r0[pos] = np.NaN
+    r1[pos] = np.NaN
+
+    displacement = correct.grid_displacement(r0, r1)
+    dxdt = 200 * displacement[0] / dt
+    dydt = 200 * displacement[1] / dt
+
+    xoffset = dxdt * timedelta.astype(int)
+    yoffset = dydt * timedelta.astype(int)
+    xoffset = np.repeat(xoffset[:, np.newaxis], radar0.ngates, axis=1)
+    yoffset = np.repeat(yoffset[:, np.newaxis], radar0.ngates, axis=1)
+
+    radar0.gate_x['data'] = radar0.gate_x['data'] + xoffset
+    radar0.gate_y['data'] = radar0.gate_y['data'] + yoffset
+
+    del grid0, grid1, radar1
+    return radar0
+
+
+def get_ground_radar_attributes(grfile):
+    try:
+        radar = pyart.io.read_cfradial(grfile, delay_field_loading=True)
+    except Exception:
+        radar = pyart.aux_io.read_odim_h5(grfile, delay_field_loading=True)
+
+    rmax = radar.range['data'].max()
+    rmin = 20e3
+    grlon = radar.longitude['data'][0]
+    grlat = radar.latitude['data'][0]
+    gralt = radar.altitude['data'][0]
+
+    del radar
+    return grlon, grlat, gralt, rmin, rmax
+
+
+def data_load_and_checks(gpmfile,
+                         grfile,
+                         grfile2=None,
+                         refl_name=None,
+                         radar_band=None,
+                         gpm_refl_threshold=17):
     '''
     Load GPM and Ground radar files and perform some initial checks:
     domains intersect, precipitation, time difference.
@@ -154,9 +245,15 @@ def data_load_and_checks(gpmfile, grfile, *, refl_name, gpm_refl_threshold):
         GPM data file.
     grfile: str
         Ground radar input file.
+    grfile2: str
+        Second ground radar input file to compute grid displacement and
+        advection.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
-    refl_min_thld: float
+    radar_band: str
+        Ground radar frequency band for reflectivity conversion. S, C, and X
+        supported.
+    gpm_refl_threshold: float
         Minimum threshold applied to GPM reflectivity.
 
     Returns:
@@ -166,16 +263,13 @@ def data_load_and_checks(gpmfile, grfile, *, refl_name, gpm_refl_threshold):
     radar: pyart.core.Radar
         Pyart radar dataset.
     '''
-    gpmset = read_GPM(gpmfile, gpm_refl_threshold)
-    try:
-        radar = pyart.io.read_cfradial(grfile, delay_field_loading='True')
-    except Exception:
-        radar = pyart.aux_io.read_odim_h5(grfile, delay_field_loading='True')
+    if refl_name is None:
+        raise ValueError('Reflectivity field name not given.')
+    if grfile2 is None:
+        gpmtime0 = 0
 
-    rmax = radar.range['data'].max()
-    rmin = 20e3
-    grlon = radar.longitude['data'][0]
-    grlat = radar.latitude['data'][0]
+    gpmset = read_GPM(gpmfile, gpm_refl_threshold)
+    grlon, grlat, gralt, rmin, rmax = get_ground_radar_attributes(grfile)
 
     # Reproject satellite coordinates onto ground radar
     georef = pyproj.Proj(f"+proj=aeqd +lon_0={grlon} +lat_0={grlat} +ellps=WGS84")
@@ -184,9 +278,6 @@ def data_load_and_checks(gpmfile, grfile, *, refl_name, gpm_refl_threshold):
 
     xgpm, ygpm = georef(gpmlon, gpmlat)
     rproj_gpm = (xgpm ** 2 + ygpm ** 2) ** 0.5
-    # Checks.
-    if gpmlon.shape != rproj_gpm.shape:
-        raise IndexError(f'Shape mismatch gpm and rprog {gpmlon.shape}, {rproj_gpm.shape}.')
 
     gr_domain = (rproj_gpm <= rmax) & (rproj_gpm >= rmin)
     if gr_domain.sum() < 10:
@@ -212,14 +303,14 @@ def data_load_and_checks(gpmfile, grfile, *, refl_name, gpm_refl_threshold):
     # Compute the elevation of the satellite bins with respect to the ground radar.
     gr_gaussian_radius = correct.compute_gaussian_curvature(grlat)
     gamma = np.sqrt(sr_xp ** 2 + sr_yp ** 2) / gr_gaussian_radius
-    elev_sr_grref = np.rad2deg(np.arctan2(np.cos(gamma) - (gr_gaussian_radius + radar.altitude['data']) / (gr_gaussian_radius + z_sr), np.sin(gamma)))
+    elev_sr_grref = np.rad2deg(np.arctan2(np.cos(gamma) - (gr_gaussian_radius + gralt) / (gr_gaussian_radius + z_sr), np.sin(gamma)))
 
     # Convert reflectivity band correction
     refp_strat, refp_conv = correct.convert_sat_refl_to_gr_band(gpmset.zFactorCorrected.values,
-                                                        z_sr,
-                                                        gpmset.heightBB.values,
-                                                        gpmset.widthBB.values,
-                                                        radar_band='C')
+                                                                z_sr,
+                                                                gpmset.heightBB.values,
+                                                                gpmset.widthBB.values,
+                                                                radar_band=radar_band)
 
     gpmset = gpmset.merge({'precip_in_gr_domain':  (('nscan', 'nray'), gpmset.flagPrecip.values & gr_domain),
                            'range_from_gr': (('nscan', 'nray'), rproj_gpm),
@@ -248,5 +339,12 @@ def data_load_and_checks(gpmfile, grfile, *, refl_name, gpm_refl_threshold):
     gpmset.conv_reflectivity_grband.attrs['description'] = 'Reflectivity of convective precipitation converted to ground radar frequency band.'
     gpmset.attrs['nprof'] = nprof
     gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
+
+    # Now it's turn to read the ground radar.
+    if grfile2 is not None:
+        # Get the GPM time that is the closest from the radar site.
+        gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
+        gpmtime0 = gpmtime0[~np.isnan(gpmtime0)][0]
+    radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
 
     return gpmset, radar

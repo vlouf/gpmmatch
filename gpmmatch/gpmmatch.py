@@ -66,7 +66,12 @@ def volume_matching(gpmfile,
         output_dir = os.getcwd()
 
     bwr = gr_beamwidth
-    gpmset, radar = data_load_and_checks(gpmfile, grfile, grfile2=grfile2, refl_name=refl_name, gpm_refl_threshold=gpm_refl_threshold, radar_band=radar_band)
+    gpmset, radar = data_load_and_checks(gpmfile,
+                                         grfile,
+                                         grfile2=grfile2,
+                                         refl_name=refl_name,
+                                         gpm_refl_threshold=gpm_refl_threshold,
+                                         radar_band=radar_band)
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
     if radar.elevation['data'].max() >= 80:
