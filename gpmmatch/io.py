@@ -29,6 +29,39 @@ class NoPrecipitationError(Exception):
     pass
 
 
+def _read_radar(infile, refl_name):
+    """
+    Read input radar file
+    Parameters:
+    ===========
+    radar_file_list: str
+        List of radar files.
+    refl_name: str
+        Reflectivity field name.
+    Returns:
+    ========
+    radar: PyART.Radar
+        Radar data.
+    """
+    try:
+        if infile.lower().endswith(('.h5', '.hdf', '.hdf5')):
+            radar = pyart.aux_io.read_odim_h5(infile, include_fields=[refl_name])
+        else:
+            radar = pyart.io.read(infile, include_fields=[refl_name])
+    except Exception:
+        print(f'!!!! Problem with {infile} !!!!')
+        raise
+
+    try:
+        radar.fields[refl_name]
+    except KeyError:        
+        print(f'!!!! Problem with {infile} - No {refl_name} field does not exist. !!!!')
+        del radar
+        raise 
+
+    return radar
+
+
 def get_gpm_orbit(gpmfile):
     '''
     Parameters:
@@ -168,9 +201,9 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
         Pyart radar dataset, corrected for advection if grfile2 provided.
     '''
     try:
-        radar0 = pyart.io.read_cfradial(grfile, include_fields=[refl_name])
+        radar0 = _read_radar(grfile, refl_name)
     except Exception:
-        radar0 = pyart.aux_io.read_odim_h5(grfile, include_fields=[refl_name])
+        return None
 
     if grfile2 is None:
         return radar0
@@ -180,9 +213,10 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
 
     # grfile2 is not None here.
     try:
-        radar1 = pyart.io.read_cfradial(grfile2, include_fields=[refl_name])
+        radar1 = _read_radar(grfile, refl_name)
     except Exception:
-        radar1 = pyart.aux_io.read_odim_h5(grfile2, include_fields=[refl_name])
+        print('!!! Could not read 2nd ground radar file, only using the first one !!!')
+        return radar0
 
     t0 = netCDF4.num2date(radar0.time['data'][0], radar0.time['units'])
     t1 = netCDF4.num2date(radar1.time['data'][0], radar1.time['units'])
@@ -389,7 +423,7 @@ def data_load_and_checks(gpmfile,
     if grfile2 is not None:
         # Get the GPM time that is the closest from the radar site.
         gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
-        gpmtime0 = gpmtime0[~np.isnan(gpmtime0)][0]
+        gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]        
     radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
 
     return gpmset, radar
