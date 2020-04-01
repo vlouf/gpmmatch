@@ -29,7 +29,7 @@ class NoPrecipitationError(Exception):
     pass
 
 
-def _read_radar(infile, refl_name):
+def _read_radar(infile, refl_name=None):
     """
     Read input radar file
     Parameters:
@@ -52,12 +52,13 @@ def _read_radar(infile, refl_name):
         print(f'!!!! Problem with {infile} !!!!')
         raise
 
-    try:
-        radar.fields[refl_name]
-    except KeyError:        
-        print(f'!!!! Problem with {infile} - No {refl_name} field does not exist. !!!!')
-        del radar
-        raise 
+    if refl_name is not None:            
+        try:
+            radar.fields[refl_name]
+        except KeyError:        
+            print(f'!!!! Problem with {infile} - No {refl_name} field does not exist. !!!!')
+            del radar
+            raise 
 
     return radar
 
@@ -293,10 +294,7 @@ def get_ground_radar_attributes(grfile):
     rmax: float
         Radar maximum range.
     '''
-    try:
-        radar = pyart.io.read_cfradial(grfile, delay_field_loading=True)
-    except Exception:
-        radar = pyart.aux_io.read_odim_h5(grfile, delay_field_loading=True)
+    radar = _read_radar(grfile, None)
 
     rmax = radar.range['data'].max()
     rmin = 20e3
