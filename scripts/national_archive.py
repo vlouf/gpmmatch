@@ -44,7 +44,7 @@ def buffer(infile, cmask):
         95th percentile of the clutter reflectivity.
     '''
     try:
-        dtime, rca = cluttercal.extract_clutter(infile, cmask, refl_name='total_power')
+        # dtime, rca = cluttercal.extract_clutter(infile, cmask, refl_name='total_power')
     except ValueError:
         return None
     except Exception:
@@ -148,3 +148,41 @@ def remove(flist):
         except FileNotFoundError:
             pass
     return None
+
+
+def savedata(df, date, path):
+    '''
+    Save the output data into a CSV file compatible with pandas.
+    Parameters:
+    ===========
+    df: pd.Dataframe
+        RCA timeserie to be saved.
+    date:
+        Date of processing.
+    path: str
+        Output directory.
+    '''
+    # datestr = date.strftime('%Y%m%d')
+
+    # path = os.path.join(path, 'rca')
+    # mkdir(path)
+    # path = os.path.join(path, RID)
+    # mkdir(path)
+    # path = os.path.join(path, str(date.year))
+    # mkdir(path)
+
+    # outfilename = os.path.join(path, f'rca.{RID}.{datestr}.csv')
+    # df.to_csv(outfilename)
+    # print(crayons.green(f'Found {len(df)} hits for {datestr}.'))
+    # print(crayons.green(f'Results saved in {outfilename}.'))
+
+    return None
+
+
+def main(date_range):
+    
+    return None
+
+
+if __name__ == "__main__":
+    main()
