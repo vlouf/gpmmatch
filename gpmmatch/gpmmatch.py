@@ -13,7 +13,7 @@ import uuid
 import datetime
 import itertools
 
-import netCDF4
+import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -232,8 +232,14 @@ def volume_matching(gpmfile,
         for sk, sv in v.items():
             matchset[k].attrs[sk] = sv
 
-    radar_start_time = netCDF4.num2date(radar.time['data'][0], radar.time['units']).isoformat()
-    radar_end_time = netCDF4.num2date(radar.time['data'][-1], radar.time['units']).isoformat()
+    radar_start_time = cftime.num2date(radar.time['data'][0], 
+                                       radar.time['units'], 
+                                       only_use_cftime_datetimes=False, 
+                                       only_use_python_datetimes=True).isoformat()
+    radar_end_time = cftime.num2date(radar.time['data'][-1], 
+                                     radar.time['units'], 
+                                     only_use_cftime_datetimes=False, 
+                                     only_use_python_datetimes=True).isoformat()
 
     ar = gpmset.x ** 2 + gpmset.y ** 2
     iscan, _, _ = np.where(ar == ar.min())
@@ -262,7 +268,10 @@ def volume_matching(gpmfile,
     matchset.attrs['history'] = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
 
     if write_output:
-        date = netCDF4.num2date(radar.time['data'][0], radar.time['units']).strftime('%Y%m%d.%H%M')
+        date = cftime.num2date(radar.time['data'][0], 
+                               radar.time['units'], 
+                               only_use_cftime_datetimes=False, 
+                               only_use_python_datetimes=True).strftime('%Y%m%d.%H%M')
         outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
         if not os.path.exists(os.path.join(output_dir, outfilename)):
 
