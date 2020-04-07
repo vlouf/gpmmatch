@@ -148,6 +148,12 @@ def read_GPM(infile, refl_min_thld):
     distance_from_sr = 407000 / np.cos(np.deg2rad(A)) - R  # called rt in IDL code.
     data['distance_from_sr'] = (('nray', 'nbin'), distance_from_sr)
 
+    try:
+        # TRMM doesn't have a MilliSecond field.
+        _ = date['MilliSecond']
+    except KeyError:
+        date['MilliSecond'] = date['Second']
+
     dtime = np.array([datetime.datetime(*d) for d in zip(date['Year'],
                                                          date['Month'],
                                                          date['DayOfMonth'],
