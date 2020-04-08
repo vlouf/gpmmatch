@@ -52,13 +52,13 @@ def _read_radar(infile, refl_name=None):
         print(f'!!!! Problem with {infile} !!!!')
         raise
 
-    if refl_name is not None:            
+    if refl_name is not None:
         try:
             radar.fields[refl_name]
-        except KeyError:        
+        except KeyError:
             print(f'!!!! Problem with {infile} - No {refl_name} field does not exist. !!!!')
             del radar
-            raise 
+            raise
 
     return radar
 
@@ -380,7 +380,7 @@ def data_load_and_checks(gpmfile,
     if brightband_domain.sum() < 10:
         is_brightband = False
     else:
-        is_brightband = True        
+        is_brightband = True
 
     # Parallax correction
     sr_xp, sr_yp, z_sr = correct.correct_parallax(xgpm, ygpm, gpmset)
@@ -398,7 +398,7 @@ def data_load_and_checks(gpmfile,
                                                                     gpmset.widthBB.values,
                                                                     radar_band=radar_band)
     else:
-        refp_strat, refp_conv = correct.convert_gpmrefl_grband_dfr(gpmset.zFactorCorrected.values, 
+        refp_strat, refp_conv = correct.convert_gpmrefl_grband_dfr(gpmset.zFactorCorrected.values,
                                                                    radar_band=radar_band)
 
     gpmset = gpmset.merge({'precip_in_gr_domain':  (('nscan', 'nray'), gpmset.flagPrecip.values & gr_domain),
@@ -433,7 +433,7 @@ def data_load_and_checks(gpmfile,
     if grfile2 is not None:
         # Get the GPM time that is the closest from the radar site.
         gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
-        gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]        
+        gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
     radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
 
     return gpmset, radar
