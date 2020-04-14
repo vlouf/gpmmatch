@@ -5,7 +5,7 @@ Volume matching of ground radar and GPM satellite.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 04/03/2020
+@date: 14/04/2020
     volume_matching
 '''
 import os
@@ -34,7 +34,7 @@ def volume_matching(gpmfile,
                     output_dir=None,
                     write_output=True):
     '''
-    Performs the volume matching of GPM to ground based radar.
+    Performs the volume matching of GPM satellite data to ground based radar.
 
     Parameters:
     ----------
@@ -42,6 +42,8 @@ def volume_matching(gpmfile,
         GPM data file.
     grfile: str
         Ground radar input file.
+    grfile2: str
+        Second ground radar input file to compute the advection.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
@@ -50,6 +52,8 @@ def volume_matching(gpmfile,
         Ground radar 3dB-beamwidth.
     gr_refl_thresold: float
         Minimum reflectivity threshold on ground radar data.
+    gpm_refl_threshold: float
+        Minimum reflectivity threshold on GPM data.
     output_dir: str
         Path to output directory.
     write_output: bool
@@ -232,13 +236,13 @@ def volume_matching(gpmfile,
         for sk, sv in v.items():
             matchset[k].attrs[sk] = sv
 
-    radar_start_time = cftime.num2date(radar.time['data'][0], 
-                                       radar.time['units'], 
-                                       only_use_cftime_datetimes=False, 
+    radar_start_time = cftime.num2date(radar.time['data'][0],
+                                       radar.time['units'],
+                                       only_use_cftime_datetimes=False,
                                        only_use_python_datetimes=True).isoformat()
-    radar_end_time = cftime.num2date(radar.time['data'][-1], 
-                                     radar.time['units'], 
-                                     only_use_cftime_datetimes=False, 
+    radar_end_time = cftime.num2date(radar.time['data'][-1],
+                                     radar.time['units'],
+                                     only_use_cftime_datetimes=False,
                                      only_use_python_datetimes=True).isoformat()
 
     ar = gpmset.x ** 2 + gpmset.y ** 2
@@ -268,9 +272,9 @@ def volume_matching(gpmfile,
     matchset.attrs['history'] = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
 
     if write_output:
-        date = cftime.num2date(radar.time['data'][0], 
-                               radar.time['units'], 
-                               only_use_cftime_datetimes=False, 
+        date = cftime.num2date(radar.time['data'][0],
+                               radar.time['units'],
+                               only_use_cftime_datetimes=False,
                                only_use_python_datetimes=True).strftime('%Y%m%d.%H%M')
         outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
         if not os.path.exists(os.path.join(output_dir, outfilename)):
