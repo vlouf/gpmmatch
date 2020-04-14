@@ -6,7 +6,8 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 04/03/2020
+@date: 14/04/2020
+
     NoPrecipitationError
     get_gpm_orbit
     read_GPM
@@ -32,12 +33,14 @@ class NoPrecipitationError(Exception):
 def _read_radar(infile, refl_name=None):
     """
     Read input radar file
+
     Parameters:
     ===========
     radar_file_list: str
         List of radar files.
     refl_name: str
         Reflectivity field name.
+
     Returns:
     ========
     radar: PyART.Radar
@@ -66,7 +69,7 @@ def _read_radar(infile, refl_name=None):
 def get_gpm_orbit(gpmfile):
     '''
     Parameters:
-    ----------
+    -----------
     gpmfile: str
         GPM data file.
 
@@ -90,7 +93,7 @@ def read_GPM(infile, refl_min_thld):
     Read GPM data and organize them into a Dataset.
 
     Parameters:
-    ----------
+    -----------
     gpmfile: str
         GPM data file.
     refl_min_thld: float
@@ -215,9 +218,9 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
     if grfile2 is None:
         return radar0
 
-    rtime = cftime.num2date(radar0.time['data'], 
-                            radar0.time['units'], 
-                            only_use_cftime_datetimes=False, 
+    rtime = cftime.num2date(radar0.time['data'],
+                            radar0.time['units'],
+                            only_use_cftime_datetimes=False,
                             only_use_python_datetimes=True).astype('datetime64[s]')
     timedelta = rtime - gpm_time
 
@@ -228,13 +231,13 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
         print('!!! Could not read 2nd ground radar file, only using the first one !!!')
         return radar0
 
-    t0 = cftime.num2date(radar0.time['data'][0], 
-                         radar0.time['units'], 
-                         only_use_cftime_datetimes=False, 
+    t0 = cftime.num2date(radar0.time['data'][0],
+                         radar0.time['units'],
+                         only_use_cftime_datetimes=False,
                          only_use_python_datetimes=True)
-    t1 = cftime.num2date(radar1.time['data'][0], 
-                         radar1.time['units'], 
-                         only_use_cftime_datetimes=False, 
+    t1 = cftime.num2date(radar1.time['data'][0],
+                         radar1.time['units'],
+                         only_use_cftime_datetimes=False,
                          only_use_python_datetimes=True)
     if t1 > t0:
         dt = (t1 - t0).seconds
@@ -332,7 +335,7 @@ def data_load_and_checks(gpmfile,
     domains intersect, precipitation, time difference.
 
     Parameters:
-    ----------
+    -----------
     gpmfile: str
         GPM data file.
     grfile: str

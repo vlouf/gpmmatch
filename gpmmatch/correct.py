@@ -6,6 +6,7 @@ Various utilities for correction and conversion of satellite data.
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
 @date: 04/03/2020
+
     correct_parallax
     convert_sat_refl_to_gr_band
     compute_gaussian_curvature
@@ -16,20 +17,20 @@ import numpy as np
 
 def correct_parallax(sr_x, sr_y, gpmset):
     '''
-    Adjust the geo-locations of the SR pixels.
-    The `sr_xy` coordinates of the SR beam footprints need to be in the
-    azimuthal equidistant projection of the ground radar. This ensures that the
-    ground radar is fixed at xy-coordinate (0, 0), and every SR bin has its
-    relative xy-coordinates with respect to the ground radar site.
+    Adjust the geo-locations of the SR pixels. The `sr_xy` coordinates of the
+    SR beam footprints need to be in the azimuthal equidistant projection of
+    the ground radar. This ensures that the ground radar is fixed at
+    xy-coordinate (0, 0), and every SR bin has its relative xy-coordinates
+    with respect to the ground radar site.
 
-    Parameters
-    ----------
+    Parameters:
+    -----------
     sr_xy : :class:`numpy:numpy.ndarray`
         Array of xy-coordinates of shape (nscans, nbeams, 2)
     gpmset: xarray
 
-    Returns
-    -------
+    Returns:
+    --------
     sr_xyp : :class:`numpy:numpy.ndarray`
         Array of parallax corrected coordinates
         of shape (nscans, nbeams, nbins).
@@ -69,8 +70,8 @@ def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band=None):
     Convert the satellite reflectivity to S, C, or X-band using the Cao et al.
     (2013) method.
 
-    Parameters
-    ==========
+    Parameters:
+    ===========
     refp:
         Satellite reflectivity field.
     zp:
@@ -82,8 +83,8 @@ def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band=None):
     radar_band: str
         Possible values are 'S', 'C', or 'X'
 
-    Return
-    ======
+    Return:
+    =======
     refp_ss:
         Stratiform reflectivity conversion from Ku-band to S-band
     refp_sh:
@@ -198,15 +199,15 @@ def convert_gpmrefl_grband_dfr(refp, radar_band=None):
     NOTE: It's a continuous relationship, so here there is no difference here
     between conv/strat.
 
-    Parameters
-    ==========
+    Parameters:
+    ===========
     refp:
         Satellite reflectivity field.
     radar_band: str
         Possible values are 'S', 'C', or 'X'
 
-    Return
-    ======
+    Return:
+    =======
     refl_strat:
         Stratiform reflectivity conversion from Ku-band to S-band
     refl_conv:
@@ -227,7 +228,7 @@ def convert_gpmrefl_grband_dfr(refp, radar_band=None):
 
     # It's a continuous relationship, so here there is no difference between conv/strat.
     refl_strat = refp + dfr(refp)
-    refl_conv = refl_strat  
+    refl_conv = refl_strat
 
     return refl_strat, refl_conv
 
@@ -266,13 +267,13 @@ def grid_displacement(field1, field2):
     Calculate the grid displacement using Phase correlation.
     http://en.wikipedia.org/wiki/Phase_correlation
 
-    Parameters
-    ----------
+    Parameters:
+    -----------
     field1, field2 : ndarray
        Fields separated in time.
 
-    Returns
-    -------
+    Returns:
+    --------
     displacement : two-tuple
          integers if pixels, otherwise floats. Result of the calculation
     """
