@@ -126,6 +126,8 @@ def read_GPM(infile, refl_min_thld):
                     elif sk == 'zFactorCorrected':
                         # Reverse direction along the beam.
                         data[sk] = (dims, np.ma.masked_less_equal(hid[f'/NS/{k}/{sk}'][:][:, :, ::-1], refl_min_thld))
+                    elif sk == 'flagPrecip':
+                        data[sk] = (dims, np.ma.masked_invalid(hid[f'/NS/{k}/{sk}'][:]).filled(0).astype(bool))
                     else:
                         data[sk] = (dims, np.ma.masked_equal(hid[f'/NS/{k}/{sk}'][:], fv))
 
@@ -138,7 +140,7 @@ def read_GPM(infile, refl_min_thld):
     quality = np.zeros(data['heightBB'][-1].shape, dtype=np.int32)
     quality[((data['qualityBB'][-1] == 0) | (data['qualityBB'][-1] == 1)) & (data['qualityTypePrecip'][-1] == 1)] = 1
     quality[(data['qualityBB'][-1] > 1) | (data['qualityTypePrecip'][-1] > 1)] = 2
-    data['quality'] = (data['heightBB'][0], quality)
+    data['quality'] = (data['heightBB'][0], quality)    
 
     # Generate dimensions.
     nray = np.linspace(-17.04, 17.04, 49)
