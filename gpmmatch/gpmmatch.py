@@ -92,7 +92,7 @@ def volume_matching(gpmfile,
     rmax_gr = range_gr.max()
     dr = range_gr[1] - range_gr[0]
 
-    R, A = np.meshgrid(radar.range['data'], radar.azimuth['data'])
+    R, _ = np.meshgrid(radar.range['data'], radar.azimuth['data'])
 
     try:
         ground_radar_reflectivity = radar.fields[refl_name]['data'].filled(np.NaN)

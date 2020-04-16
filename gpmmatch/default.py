@@ -11,6 +11,14 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 
 
 def get_metadata():
+    '''
+    Return a bunch of metadata (description, units, long_name, etc.) for the 
+    output dataset.
+
+    Returns:
+    ========
+    metadata: dict
+    '''
     metadata = {
         "refl_gpm_raw": {
             "units": "dBZ",
