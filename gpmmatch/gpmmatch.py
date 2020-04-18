@@ -23,7 +23,7 @@ from .io import data_load_and_checks
 from .default import get_metadata
 
 
-def savedata(matchset, radar, output_dir, fname_prefix):
+def savedata(matchset, radar, output_dir, fname_prefix, orbit):
     '''
     Save dataset as a netCDF4.
 
@@ -33,6 +33,8 @@ def savedata(matchset, radar, output_dir, fname_prefix):
         Name of the ground radar to use as label for the output file.
     output_dir: str
         Path to output directory.
+    orbit: int
+        GPM orbit number.
     '''
     if fname_prefix is None:
         fname_prefix = 'unknown_radar'
@@ -68,7 +70,7 @@ def savedata(matchset, radar, output_dir, fname_prefix):
                             radar.time['units'],
                             only_use_cftime_datetimes=False,
                             only_use_python_datetimes=True).strftime('%Y%m%d.%H%M')
-    outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
+    outfilename = f"vmatch.gpm.orbit.{orbit:07}.{fname_prefix}.{date}.nc"
     if not os.path.exists(os.path.join(output_dir, outfilename)):
         matchset.to_netcdf(os.path.join(output_dir, outfilename),
                            encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
@@ -297,7 +299,7 @@ def volume_matching(gpmfile,
     matchset.attrs['gpm_min_distance'] = np.round(gpm_mindistance)
     matchset.attrs['gpm_orbit'] = gpmset.attrs['orbit']
     if write_output:
-        savedata(matchset, radar, output_dir, fname_prefix)
+        savedata(matchset, radar, output_dir, fname_prefix, gpmset.attrs['orbit'])
 
     del radar, gpmset
     return matchset
