@@ -5,7 +5,8 @@ Volume matching of ground radar and GPM satellite.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 14/04/2020
+@date: 18/04/2020
+    savedata
     volume_matching
 '''
 import os
@@ -24,7 +25,7 @@ from .default import get_metadata
 
 def savedata(matchset, radar, output_dir, fname_prefix):
     '''
-    Performs the volume matching of GPM satellite data to ground based radar.
+    Save dataset as a netCDF4.
 
     Parameters:
     ----------
