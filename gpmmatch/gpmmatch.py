@@ -22,6 +22,61 @@ from .io import data_load_and_checks
 from .default import get_metadata
 
 
+def savedata(matchset, radar, output_dir, fname_prefix):
+    '''
+    Performs the volume matching of GPM satellite data to ground based radar.
+
+    Parameters:
+    ----------
+    fname_prefix: str
+        Name of the ground radar to use as label for the output file.
+    output_dir: str
+        Path to output directory.
+    '''
+    if fname_prefix is None:
+        fname_prefix = 'unknown_radar'
+    if output_dir is None:
+        output_dir = os.getcwd()
+
+    radar_start_time = cftime.num2date(radar.time['data'][0],
+                                       radar.time['units'],
+                                       only_use_cftime_datetimes=False,
+                                       only_use_python_datetimes=True).isoformat()
+    radar_end_time = cftime.num2date(radar.time['data'][-1],
+                                     radar.time['units'],
+                                     only_use_cftime_datetimes=False,
+                                     only_use_python_datetimes=True).isoformat()
+
+    matchset.attrs['radar_start_time'] = radar_start_time
+    matchset.attrs['radar_end_time'] = radar_end_time
+    matchset.attrs['radar_longitude'] = radar.longitude['data'][0]
+    matchset.attrs['radar_latitude'] = radar.latitude['data'][0]
+    matchset.attrs['country'] = 'Australia'
+    matchset.attrs['creator_email'] = 'valentin.louf@bom.gov.au'
+    matchset.attrs['creator_name'] = 'Valentin Louf'
+    matchset.attrs['date_created'] = datetime.datetime.now().isoformat()
+    matchset.attrs['uuid'] = str(uuid.uuid4())
+    matchset.attrs['institution'] = 'Bureau of Meteorology'
+    matchset.attrs['references'] = 'doi:10.1175/JTECH-D-18-0007.1'
+    matchset.attrs['naming_authority'] = 'au.org.nci'
+    matchset.attrs['summary'] = 'GPM volume matching technique.'
+    matchset.attrs['field_names'] = ", ".join(sorted([k for k, v in matchset.items()]))
+    matchset.attrs['history'] = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
+
+    date = cftime.num2date(radar.time['data'][0],
+                            radar.time['units'],
+                            only_use_cftime_datetimes=False,
+                            only_use_python_datetimes=True).strftime('%Y%m%d.%H%M')
+    outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
+    if not os.path.exists(os.path.join(output_dir, outfilename)):
+        matchset.to_netcdf(os.path.join(output_dir, outfilename),
+                           encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
+    else:
+        print('Output file already exists.')
+
+    return None
+
+
 def volume_matching(gpmfile,
                     grfile,
                     grfile2=None,
@@ -64,11 +119,6 @@ def volume_matching(gpmfile,
     matchset: xarray.Dataset
         Dataset containing the matched GPM and ground radar data.
     '''
-    if fname_prefix is None:
-        fname_prefix = 'unknown_radar'
-    if output_dir is None:
-        output_dir = os.getcwd()
-
     bwr = gr_beamwidth
     gpmset, radar = data_load_and_checks(gpmfile,
                                          grfile,
@@ -231,19 +281,9 @@ def volume_matching(gpmfile,
 
     matchset = xr.Dataset(match)
     metadata = get_metadata()
-
     for k, v in metadata.items():
         for sk, sv in v.items():
             matchset[k].attrs[sk] = sv
-
-    radar_start_time = cftime.num2date(radar.time['data'][0],
-                                       radar.time['units'],
-                                       only_use_cftime_datetimes=False,
-                                       only_use_python_datetimes=True).isoformat()
-    radar_end_time = cftime.num2date(radar.time['data'][-1],
-                                     radar.time['units'],
-                                     only_use_cftime_datetimes=False,
-                                     only_use_python_datetimes=True).isoformat()
 
     ar = gpmset.x ** 2 + gpmset.y ** 2
     iscan, _, _ = np.where(ar == ar.min())
@@ -252,37 +292,11 @@ def volume_matching(gpmfile,
     offset = np.nanmean((matchset['refl_gpm_raw'] - matchset['refl_gr_weigthed']).values)
 
     matchset.attrs['estimated_calibration_offset'] = f'{offset:0.4} dB'
-    matchset.attrs['radar_start_time'] = radar_start_time
-    matchset.attrs['radar_end_time'] = radar_end_time
     matchset.attrs['gpm_overpass_time'] = gpm_overpass_time
     matchset.attrs['gpm_min_distance'] = np.round(gpm_mindistance)
-    matchset.attrs['radar_longitude'] = radar.longitude['data'][0]
-    matchset.attrs['radar_latitude'] = radar.latitude['data'][0]
     matchset.attrs['gpm_orbit'] = gpmset.attrs['orbit']
-    matchset.attrs['country'] = 'Australia'
-    matchset.attrs['creator_email'] = 'valentin.louf@bom.gov.au'
-    matchset.attrs['creator_name'] = 'Valentin Louf'
-    matchset.attrs['date_created'] = datetime.datetime.now().isoformat()
-    matchset.attrs['uuid'] = str(uuid.uuid4())
-    matchset.attrs['institution'] = 'Bureau of Meteorology'
-    matchset.attrs['references'] = 'doi:10.1175/JTECH-D-18-0007.1'
-    matchset.attrs['naming_authority'] = 'au.org.nci'
-    matchset.attrs['summary'] = 'GPM volume matching technique.'
-    matchset.attrs['field_names'] = ", ".join(sorted([k for k, v in matchset.items()]))
-    matchset.attrs['history'] = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
-
     if write_output:
-        date = cftime.num2date(radar.time['data'][0],
-                               radar.time['units'],
-                               only_use_cftime_datetimes=False,
-                               only_use_python_datetimes=True).strftime('%Y%m%d.%H%M')
-        outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
-        if not os.path.exists(os.path.join(output_dir, outfilename)):
-
-            matchset.to_netcdf(os.path.join(output_dir, outfilename),
-                               encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
-        else:
-            print('Output file already exists.')
+        savedata(matchset, radar, output_dir, fname_prefix)
 
     del radar, gpmset
     return matchset
