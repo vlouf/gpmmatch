@@ -220,10 +220,7 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
     if grfile2 is None:
         return radar0
 
-    rtime = cftime.num2date(radar0.time['data'],
-                            radar0.time['units'],
-                            only_use_cftime_datetimes=False,
-                            only_use_python_datetimes=True).astype('datetime64[s]')
+    rtime = cftime.num2pydate(radar0.time['data'], radar0.time['units']).astype('datetime64[s]')
     timedelta = rtime - gpm_time
 
     # grfile2 is not None here.
@@ -233,14 +230,8 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
         print('!!! Could not read 2nd ground radar file, only using the first one !!!')
         return radar0
 
-    t0 = cftime.num2date(radar0.time['data'][0],
-                         radar0.time['units'],
-                         only_use_cftime_datetimes=False,
-                         only_use_python_datetimes=True)
-    t1 = cftime.num2date(radar1.time['data'][0],
-                         radar1.time['units'],
-                         only_use_cftime_datetimes=False,
-                         only_use_python_datetimes=True)
+    t0 = cftime.num2pydate(radar0.time['data'][0], radar0.time['units'])
+    t1 = cftime.num2pydate(radar1.time['data'][0], radar1.time['units'])
     if t1 > t0:
         dt = (t1 - t0).seconds
     else:
