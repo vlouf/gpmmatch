@@ -5,7 +5,7 @@ Volume matching of ground radar and GPM satellite.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 18/04/2020
+@date: 22/04/2020
     savedata
     volume_matching
 '''
@@ -74,6 +74,7 @@ def savedata(matchset, radar, output_dir, fname_prefix, orbit):
 def volume_matching(gpmfile,
                     grfile,
                     grfile2=None,
+                    gr_offset=0,
                     radar_band='C',
                     refl_name='corrected_reflectivity',
                     fname_prefix=None,
@@ -93,6 +94,8 @@ def volume_matching(gpmfile,
         Ground radar input file.
     grfile2: str
         Second ground radar input file to compute the advection.
+    gr_offset: float
+        Offset to add to the reflectivity of the ground radar data.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
@@ -142,6 +145,8 @@ def volume_matching(gpmfile,
         ground_radar_reflectivity = radar.fields[refl_name]['data'].filled(np.NaN)
     except Exception:
         ground_radar_reflectivity = radar.fields[refl_name]['data']
+    # Add offset to the ground radar reflectivity
+    ground_radar_reflectivity = ground_radar_reflectivity + gr_offset
     ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
     ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
 
@@ -289,6 +294,7 @@ def volume_matching(gpmfile,
     matchset.attrs['gpm_overpass_time'] = gpm_overpass_time
     matchset.attrs['gpm_min_distance'] = np.round(gpm_mindistance)
     matchset.attrs['gpm_orbit'] = gpmset.attrs['orbit']
+    matchset.attrs['gr_reflectivity_offset'] = gr_offset
     if write_output:
         savedata(matchset, radar, output_dir, fname_prefix, gpmset.attrs['orbit'])
 
