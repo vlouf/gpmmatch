@@ -266,6 +266,9 @@ def volume_matching(gpmfile,
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
     offset = np.nanmean((matchset['refl_gr_weigthed'] - matchset['refl_gpm_raw']).values)
 
+    if np.isnan(offset):
+        raise ValueError('No offset found.')
+
     radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
     radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
     date = cftime.num2pydate(radar.time['data'][0], radar.time['units']).strftime('%Y%m%d.%H%M')
