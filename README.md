@@ -1,6 +1,6 @@
 # 🛰️ gpmmatch 🛰️
 
-Ground-radar vs satellite volume-matching. Works with TRMM and GPM.
+Ground-radar vs satellite volume-matching. While build to work with GPM, it also works with the latest version of TRMM products.
 
 ## Dependencies
 
