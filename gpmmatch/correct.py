@@ -5,7 +5,7 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 04/03/2020
+@date: 22/04/2020
 
     correct_parallax
     convert_sat_refl_to_gr_band
@@ -25,8 +25,10 @@ def correct_parallax(sr_x, sr_y, gpmset):
 
     Parameters:
     -----------
-    sr_xy : :class:`numpy:numpy.ndarray`
-        Array of xy-coordinates of shape (nscans, nbeams, 2)
+    sr_x: ndarray
+        Array of x-coordinates of shape (nscans, nbeams)
+    sr_y: ndarray
+        Array of y-coordinates of shape (nscans, nbeams)
     gpmset: xarray
 
     Returns:
@@ -65,14 +67,14 @@ def correct_parallax(sr_x, sr_y, gpmset):
     return sr_xp, sr_yp, z_sr
 
 
-def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band=None):
+def convert_sat_refl_to_gr_band(refl_gpm, zp, zbb, bbwidth, radar_band=None):
     """
     Convert the satellite reflectivity to S, C, or X-band using the Cao et al.
     (2013) method.
 
     Parameters:
     ===========
-    refp:
+    refl_gpm:
         Satellite reflectivity field.
     zp:
         Altitude.
@@ -85,16 +87,16 @@ def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band=None):
 
     Return:
     =======
-    refp_ss:
+    refl_gpm_ss:
         Stratiform reflectivity conversion from Ku-band to S-band
-    refp_sh:
+    refl_gpm_sh:
         Convective reflectivity conversion from Ku-band to S-band
     """
     if radar_band not in ['S', 'C', 'X']:
         raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
 
-    refp_ss = np.zeros_like(refp) # snow
-    refp_sh = np.zeros_like(refp) # hail
+    refl_gpm_ss = np.zeros_like(refl_gpm) # snow
+    refl_gpm_sh = np.zeros_like(refl_gpm) # hail
 
     # Set coefficients for conversion from Ku-band to S-band
     #        Rain      90%      80%      70%      60%      50%      40%      30%      20%      10%     Snow
@@ -122,76 +124,76 @@ def convert_sat_refl_to_gr_band(refp, zp, zbb, bbwidth, radar_band=None):
     if pos.sum() > 0:
         dfrs = (
             as0[10]
-            + as1[10] * refp[pos]
-            + as2[10] * refp[pos] ** 2
-            + as3[10] * refp[pos] ** 3
-            + as4[10] * refp[pos] ** 4
+            + as1[10] * refl_gpm[pos]
+            + as2[10] * refl_gpm[pos] ** 2
+            + as3[10] * refl_gpm[pos] ** 3
+            + as4[10] * refl_gpm[pos] ** 4
         )
         dfrh = (
             ah0[10]
-            + ah1[10] * refp[pos]
-            + ah2[10] * refp[pos] ** 2
-            + ah3[10] * refp[pos] ** 3
-            + ah4[10] * refp[pos] ** 4
+            + ah1[10] * refl_gpm[pos]
+            + ah2[10] * refl_gpm[pos] ** 2
+            + ah3[10] * refl_gpm[pos] ** 3
+            + ah4[10] * refl_gpm[pos] ** 4
         )
-        refp_ss[pos] = refp[pos] + dfrs
-        refp_sh[pos] = refp[pos] + dfrh
+        refl_gpm_ss[pos] = refl_gpm[pos] + dfrs
+        refl_gpm_sh[pos] = refl_gpm[pos] + dfrh
 
     pos = ratio <= 0
     if pos.sum() > 0:  # below the melting layer
         dfrs = (
             as0[0]
-            + as1[0] * refp[pos]
-            + as2[0] * refp[pos] ** 2
-            + as3[0] * refp[pos] ** 3
-            + as4[0] * refp[pos] ** 4
+            + as1[0] * refl_gpm[pos]
+            + as2[0] * refl_gpm[pos] ** 2
+            + as3[0] * refl_gpm[pos] ** 3
+            + as4[0] * refl_gpm[pos] ** 4
         )
         dfrh = (
             ah0[0]
-            + ah1[0] * refp[pos]
-            + ah2[0] * refp[pos] ** 2
-            + ah3[0] * refp[pos] ** 3
-            + ah4[0] * refp[pos] ** 4
+            + ah1[0] * refl_gpm[pos]
+            + ah2[0] * refl_gpm[pos] ** 2
+            + ah3[0] * refl_gpm[pos] ** 3
+            + ah4[0] * refl_gpm[pos] ** 4
         )
-        refp_ss[pos] = refp[pos] + dfrs
-        refp_sh[pos] = refp[pos] + dfrh
+        refl_gpm_ss[pos] = refl_gpm[pos] + dfrs
+        refl_gpm_sh[pos] = refl_gpm[pos] + dfrh
 
     pos = (ratio > 0) & (ratio < 1)
     if pos.sum() > 0:  # within the melting layer
         ind = np.round(ratio[pos]).astype(int)[0]
         dfrs = (
             as0[ind]
-            + as1[ind] * refp[pos]
-            + as2[ind] * refp[pos] ** 2
-            + as3[ind] * refp[pos] ** 3
-            + as4[ind] * refp[pos] ** 4
+            + as1[ind] * refl_gpm[pos]
+            + as2[ind] * refl_gpm[pos] ** 2
+            + as3[ind] * refl_gpm[pos] ** 3
+            + as4[ind] * refl_gpm[pos] ** 4
         )
         dfrh = (
             ah0[ind]
-            + ah1[ind] * refp[pos]
-            + ah2[ind] * refp[pos] ** 2
-            + ah3[ind] * refp[pos] ** 3
-            + ah4[ind] * refp[pos] ** 4
+            + ah1[ind] * refl_gpm[pos]
+            + ah2[ind] * refl_gpm[pos] ** 2
+            + ah3[ind] * refl_gpm[pos] ** 3
+            + ah4[ind] * refl_gpm[pos] ** 4
         )
-        refp_ss[pos] = refp[pos] + dfrs
-        refp_sh[pos] = refp[pos] + dfrh
+        refl_gpm_ss[pos] = refl_gpm[pos] + dfrs
+        refl_gpm_sh[pos] = refl_gpm[pos] + dfrh
 
     # Jackson Tan's fix for C-band
     if radar_band == "C":
-        deltas = 5.3 / 10.0 * (refp_ss - refp)
-        refp_ss = refp + deltas
-        deltah = 5.3 / 10.0 * (refp_sh - refp)
-        refp_sh = refp + deltah
+        deltas = 5.3 / 10.0 * (refl_gpm_ss - refl_gpm)
+        refl_gpm_ss = refl_gpm + deltas
+        deltah = 5.3 / 10.0 * (refl_gpm_sh - refl_gpm)
+        refl_gpm_sh = refl_gpm + deltah
     elif radar_band == "X":
-        deltas = 3.2 / 10.0 * (refp_ss - refp)
-        refp_ss = refp + deltas
-        deltah = 3.2 / 10.0 * (refp_sh - refp)
-        refp_sh = refp + deltah
+        deltas = 3.2 / 10.0 * (refl_gpm_ss - refl_gpm)
+        refl_gpm_ss = refl_gpm + deltas
+        deltah = 3.2 / 10.0 * (refl_gpm_sh - refl_gpm)
+        refl_gpm_sh = refl_gpm + deltah
 
-    return np.ma.masked_invalid(refp_ss), np.ma.masked_invalid(refp_sh)
+    return np.ma.masked_invalid(refl_gpm_ss), np.ma.masked_invalid(refl_gpm_sh)
 
 
-def convert_gpmrefl_grband_dfr(refp, radar_band=None):
+def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
     '''
     Convert GPM reflectivity to ground radar band using the DFR relationship
     found in Louf et al. (2019) paper.
@@ -201,7 +203,7 @@ def convert_gpmrefl_grband_dfr(refp, radar_band=None):
 
     Parameters:
     ===========
-    refp:
+    refl_gpm:
         Satellite reflectivity field.
     radar_band: str
         Possible values are 'S', 'C', or 'X'
@@ -227,7 +229,7 @@ def convert_gpmrefl_grband_dfr(refp, radar_band=None):
          raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
 
     # It's a continuous relationship, so here there is no difference between conv/strat.
-    refl_strat = refp + dfr(refp)
+    refl_strat = refl_gpm + dfr(refl_gpm)
     refl_conv = refl_strat
 
     return refl_strat, refl_conv
@@ -246,7 +248,7 @@ def compute_gaussian_curvature(lat0):
     Returns:
     --------
     ae: float
-        Earth's Gaussian radius.
+        Scaled Gaussian radius.
     '''
     # Major and minor radii of the Ellipsoid
     a = 6378137.0  # Earth radius in meters
