@@ -306,7 +306,18 @@ def volume_matching(gpmfile,
     return matchset
 
 
-def vmatch_two_passes(gpmfile, grfile, grfile2=None, gr_offset=0, **kwargs):
+def vmatch_two_passes(gpmfile,
+                      grfile,
+                      grfile2=None,
+                      gr_offset=0,
+                      radar_band='C',
+                      refl_name='corrected_reflectivity',
+                      fname_prefix=None,
+                      gr_beamwidth=1,
+                      gr_refl_threshold=21,
+                      gpm_refl_threshold=21,
+                      output_dir=None,
+                      write_output=True):
     '''
     Multi-pass volume matching with automatic offset computation.
 
@@ -335,17 +346,38 @@ def vmatch_two_passes(gpmfile, grfile, grfile2=None, gr_offset=0, **kwargs):
     write_output: bool
         Does it save the data automatically or not?
     '''
-    if kwargs is None:
-        kwargs = dict()    
-        kwargs['fname_prefix'] = 'unknown_radar'    
-        kwargs['output_dir'] = os.getcwd()
+    if fname_prefix is None:
+        fname_prefix = 'unknown_radar'
+    if output_dir is None:
+        output_dir = os.getcwd()
 
-    kwargs['write_output'] = False
-    output_dir = kwargs['output_dir']
+    matchset = volume_matching(gpmfile,
+                               grfile,
+                               grfile2=grfile2,
+                               gr_offset=gr_offset,
+                               radar_band=radar_band,
+                               refl_name=refl_name,
+                               fname_prefix=fname_prefix,
+                               gr_beamwidth=gr_beamwidth,
+                               gr_refl_threshold=gr_refl_threshold,
+                               gpm_refl_threshold=gpm_refl_threshold,
+                               write_output=False)
 
-    matchset = volume_matching(gpmfile, grfile, grfile2=grfile2, gr_offset=gr_offset, **kwargs)
+    # Offset between the ground radar and the satellite.
     pass2_offset = matchset.attrs['final_offset']
-    matchset2 = volume_matching(gpmfile, grfile, grfile2=grfile2, gr_offset=pass2_offset, **kwargs)
+
+    # Running the second pass with the new offset.
+    matchset2 = volume_matching(gpmfile,
+                                grfile,
+                                grfile2=grfile2,
+                                gr_offset=pass2_offset,
+                                radar_band=radar_band,
+                                refl_name=refl_name,
+                                fname_prefix=fname_prefix,
+                                gr_beamwidth=gr_beamwidth,
+                                gr_refl_threshold=gr_refl_threshold,
+                                gpm_refl_threshold=gpm_refl_threshold,
+                                write_output=False)
 
     outfilename = matchset.attrs['filename'].replace('.nc', '.pass1.nc')
     outfilename2 = matchset2.attrs['filename'].replace('.nc', '.pass2.nc')
