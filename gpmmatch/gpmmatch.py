@@ -1,5 +1,6 @@
 '''
-Volume matching of ground radar and GPM satellite.
+Volume matching of ground radar and GPM satellite. It also works with the
+latest version of TRMM data.
 
 @title: gpmmatch
 @author: Valentin Louf <valentin.louf@bom.gov.au>
@@ -23,48 +24,23 @@ from .io import data_load_and_checks
 from .default import get_metadata
 
 
-def savedata(matchset, radar, output_dir, fname_prefix, orbit):
+def savedata(matchset, output_dir, outfilename):
     '''
     Save dataset as a netCDF4.
 
     Parameters:
     ----------
-    fname_prefix: str
-        Name of the ground radar to use as label for the output file.
+    matchset: xarray
+        Dataset containing the matched GPM and ground radar data.
     output_dir: str
         Path to output directory.
-    orbit: int
-        GPM orbit number.
+    outfilename: str
+        Output file name.
     '''
-    if fname_prefix is None:
-        fname_prefix = 'unknown_radar'
-    if output_dir is None:
-        output_dir = os.getcwd()
+    outfile = os.path.join(output_dir, outfilename)
 
-    radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
-    radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
-
-    matchset.attrs['radar_start_time'] = radar_start_time
-    matchset.attrs['radar_end_time'] = radar_end_time
-    matchset.attrs['radar_longitude'] = radar.longitude['data'][0]
-    matchset.attrs['radar_latitude'] = radar.latitude['data'][0]
-    matchset.attrs['country'] = 'Australia'
-    matchset.attrs['creator_email'] = 'valentin.louf@bom.gov.au'
-    matchset.attrs['creator_name'] = 'Valentin Louf'
-    matchset.attrs['date_created'] = datetime.datetime.now().isoformat()
-    matchset.attrs['uuid'] = str(uuid.uuid4())
-    matchset.attrs['institution'] = 'Bureau of Meteorology'
-    matchset.attrs['references'] = 'doi:10.1175/JTECH-D-18-0007.1'
-    matchset.attrs['naming_authority'] = 'au.org.nci'
-    matchset.attrs['summary'] = 'GPM volume matching technique.'
-    matchset.attrs['field_names'] = ", ".join(sorted([k for k, v in matchset.items()]))
-    matchset.attrs['history'] = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
-
-    date = cftime.num2pydate(radar.time['data'][0], radar.time['units']).strftime('%Y%m%d.%H%M')
-    outfilename = f"vmatch.gpm.orbit.{orbit:07}.{fname_prefix}.{date}.nc"
-    if not os.path.exists(os.path.join(output_dir, outfilename)):
-        matchset.to_netcdf(os.path.join(output_dir, outfilename),
-                           encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
+    if not os.path.exists(outfile):
+        matchset.to_netcdf(outfile, encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
     else:
         print('Output file already exists.')
 
@@ -116,6 +92,10 @@ def volume_matching(gpmfile,
     matchset: xarray.Dataset
         Dataset containing the matched GPM and ground radar data.
     '''
+    if fname_prefix is None:
+        fname_prefix = 'unknown_radar'
+    if output_dir is None:
+        output_dir = os.getcwd()
     bwr = gr_beamwidth
     gpmset, radar = data_load_and_checks(gpmfile,
                                          grfile,
@@ -288,15 +268,91 @@ def volume_matching(gpmfile,
     iscan, _, _ = np.where(ar == ar.min())
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
-    offset = np.nanmean((matchset['refl_gpm_raw'] - matchset['refl_gr_weigthed']).values)
+    offset = np.nanmean((matchset['refl_gr_weigthed'] - matchset['refl_gpm_raw']).values)
 
+    radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
+    radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
+    date = cftime.num2pydate(radar.time['data'][0], radar.time['units']).strftime('%Y%m%d.%H%M')
+    outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
+
+    matchset.attrs['offset_applied'] = gr_offset
+    matchset.attrs['offset_found'] = offset
+    matchset.attrs['final_offset'] = gr_offset + offset
     matchset.attrs['estimated_calibration_offset'] = f'{offset:0.4} dB'
     matchset.attrs['gpm_overpass_time'] = gpm_overpass_time
     matchset.attrs['gpm_min_distance'] = np.round(gpm_mindistance)
     matchset.attrs['gpm_orbit'] = gpmset.attrs['orbit']
-    matchset.attrs['gr_reflectivity_offset'] = gr_offset
+    matchset.attrs['radar_start_time'] = radar_start_time
+    matchset.attrs['radar_end_time'] = radar_end_time
+    matchset.attrs['radar_longitude'] = radar.longitude['data'][0]
+    matchset.attrs['radar_latitude'] = radar.latitude['data'][0]
+    matchset.attrs['country'] = 'Australia'
+    matchset.attrs['creator_email'] = 'valentin.louf@bom.gov.au'
+    matchset.attrs['creator_name'] = 'Valentin Louf'
+    matchset.attrs['date_created'] = datetime.datetime.now().isoformat()
+    matchset.attrs['uuid'] = str(uuid.uuid4())
+    matchset.attrs['institution'] = 'Bureau of Meteorology'
+    matchset.attrs['references'] = 'doi:10.1175/JTECH-D-18-0007.1'
+    matchset.attrs['naming_authority'] = 'au.org.nci'
+    matchset.attrs['summary'] = 'GPM volume matching technique.'
+    matchset.attrs['field_names'] = ", ".join(sorted([k for k, v in matchset.items()]))
+    matchset.attrs['history'] = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
+    matchset.attrs['filename'] = outfilename
+
     if write_output:
-        savedata(matchset, radar, output_dir, fname_prefix, gpmset.attrs['orbit'])
+        savedata(matchset, output_dir, outfilename)
 
     del radar, gpmset
     return matchset
+
+
+def vmatch_two_passes(gpmfile, grfile, grfile2=None, gr_offset=0, **kwargs):
+    '''
+    Multi-pass volume matching with automatic offset computation.
+
+    Parameters:
+    ----------
+    gpmfile: str
+        GPM data file.
+    grfile: str
+        Ground radar input file.
+    grfile2: str
+        Second ground radar input file to compute the advection.
+    gr_offset: float
+        Offset to add to the reflectivity of the ground radar data.
+    refl_name: str
+        Name of the reflectivity field in the ground radar data.
+    fname_prefix: str
+        Name of the ground radar to use as label for the output file.
+    gr_beamwidth: float
+        Ground radar 3dB-beamwidth.
+    gr_refl_thresold: float
+        Minimum reflectivity threshold on ground radar data.
+    gpm_refl_threshold: float
+        Minimum reflectivity threshold on GPM data.
+    output_dir: str
+        Path to output directory.
+    write_output: bool
+        Does it save the data automatically or not?
+    '''
+    if kwargs is None:
+        kwargs = dict()
+    if kwargs['fname_prefix'] is None:
+        kwargs['fname_prefix'] = 'unknown_radar'
+    if kwargs['output_dir'] is None:
+        kwargs['output_dir'] = os.getcwd()
+
+    kwargs['write_output'] = False
+    output_dir = kwargs['output_dir']
+
+    matchset = volume_matching(gpmfile, grfile, grfile2=grfile2, gr_offset=gr_offset, **kwargs)
+    pass2_offset = matchset.attrs['final_offset']
+    matchset2 = volume_matching(gpmfile, grfile, grfile2=grfile2, gr_offset=pass2_offset, **kwargs)
+
+    outfilename = matchset.attrs['filename'].replace('.nc', '.pass1.nc')
+    outfilename2 = matchset2.attrs['filename'].replace('.nc', '.pass2.nc')
+
+    savedata(matchset, output_dir, outfilename)
+    savedata(matchset2, output_dir, outfilename2)
+
+    return matchset, matchset2
