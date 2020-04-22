@@ -379,7 +379,7 @@ def vmatch_multi_pass(gpmfile,
                                 write_output=False)
 
     # Offset between the ground radar and the satellite.
-    pass3_offset = matchset.attrs['final_offset']
+    pass3_offset = matchset2.attrs['final_offset']
 
     # Running the second pass with the new offset.
     matchset3 = volume_matching(gpmfile,
