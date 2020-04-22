@@ -1,1 +1,1 @@
-from .gpmmatch import volume_matching
+from .gpmmatch import volume_matching, vmatch_two_passes
