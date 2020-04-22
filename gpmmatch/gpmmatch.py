@@ -336,10 +336,8 @@ def vmatch_two_passes(gpmfile, grfile, grfile2=None, gr_offset=0, **kwargs):
         Does it save the data automatically or not?
     '''
     if kwargs is None:
-        kwargs = dict()
-    if kwargs['fname_prefix'] is None:
-        kwargs['fname_prefix'] = 'unknown_radar'
-    if kwargs['output_dir'] is None:
+        kwargs = dict()    
+        kwargs['fname_prefix'] = 'unknown_radar'    
         kwargs['output_dir'] = os.getcwd()
 
     kwargs['write_output'] = False
@@ -355,4 +353,4 @@ def vmatch_two_passes(gpmfile, grfile, grfile2=None, gr_offset=0, **kwargs):
     savedata(matchset, output_dir, outfilename)
     savedata(matchset2, output_dir, outfilename2)
 
-    return matchset, matchset2
+    return None
