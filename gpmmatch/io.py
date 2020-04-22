@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 14/04/2020
+@date: 22/04/2020
 
     NoPrecipitationError
     get_gpm_orbit
@@ -242,6 +242,8 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
     if dt > 1800:
         raise ValueError(f"Cannot advect the ground radar data, the 2 input files are separated by more than 30min (dt = {dt}s).")
 
+    # TODO: Make domain a bit larger 100x100 km and then mask the part outside
+    # the 80x80 km window.
     grid0 = pyart.map.grid_from_radars(radar0,
                                grid_shape=(1, 801, 801),
                                grid_limits=((2500, 25000),(-80000, 80000), (-80000, 80000)),
@@ -267,7 +269,7 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
     r1[pos] = np.NaN
 
     displacement = correct.grid_displacement(r0, r1)
-    dxdt = 200 * displacement[0] / dt
+    dxdt = 200 * displacement[0] / dt  # Grid resolution is 200m.
     dydt = 200 * displacement[1] / dt
 
     xoffset = dxdt * timedelta.astype(int)
