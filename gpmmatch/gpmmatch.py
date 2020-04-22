@@ -121,8 +121,8 @@ def volume_matching(gpmfile,
 
     R, _ = np.meshgrid(radar.range['data'], radar.azimuth['data'])
 
-    # Add offset to the ground radar reflectivity
-    ground_radar_reflectivity = radar.fields[refl_name]['data'].copy().filled(np.NaN) + gr_offset
+    # Substract offset to the ground radar reflectivity
+    ground_radar_reflectivity = radar.fields[refl_name]['data'].copy().filled(np.NaN) - gr_offset
     ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
     ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
 
@@ -264,7 +264,7 @@ def volume_matching(gpmfile,
     iscan, _, _ = np.where(ar == ar.min())
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
-    offset = np.nanmean((matchset['refl_gpm_raw'] - matchset['refl_gr_weigthed']).values)
+    offset = np.nanmean((matchset['refl_gr_weigthed'] - matchset['refl_gpm_raw']).values)
 
     radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
     radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
