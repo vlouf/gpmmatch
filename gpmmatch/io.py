@@ -215,7 +215,7 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
     try:
         radar0 = _read_radar(grfile, refl_name)
     except Exception:
-        return None
+        raise
 
     if grfile2 is None:
         return radar0
