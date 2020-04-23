@@ -389,6 +389,7 @@ def vmatch_multi_pass(gpmfile,
             print(f'Solution did not converge for {gpmfile}.')
             break
 
+    matchset.attrs['iteration_number'] = counter
     outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
     savedata(matchset, output_dir, outfilename)
 
