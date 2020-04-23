@@ -350,6 +350,7 @@ def vmatch_multi_pass(gpmfile,
     if output_dir is None:
         output_dir = os.getcwd()
 
+    # First pass
     matchset = volume_matching(gpmfile,
                                grfile,
                                grfile2=grfile2,
@@ -361,45 +362,34 @@ def vmatch_multi_pass(gpmfile,
                                gr_refl_threshold=gr_refl_threshold,
                                gpm_refl_threshold=gpm_refl_threshold,
                                write_output=False)
+    pass_offset = matchset.attrs['offset_found']
 
-    # Offset between the ground radar and the satellite.
-    pass2_offset = matchset.attrs['final_offset']
+    # Multiple pass as long as the difference is more than 1dB or counter is 6
+    counter = 0
+    while np.abs(pass_offset) > 1:
+        gr_offset = matchset.attrs['final_offset']
+        matchset = volume_matching(gpmfile,
+                                   grfile,
+                                   grfile2=grfile2,
+                                   gr_offset=gr_offset,
+                                   radar_band=radar_band,
+                                   refl_name=refl_name,
+                                   fname_prefix=fname_prefix,
+                                   gr_beamwidth=gr_beamwidth,
+                                   gr_refl_threshold=gr_refl_threshold,
+                                   gpm_refl_threshold=gpm_refl_threshold,
+                                   write_output=False)
 
-    # Running the second pass with the new offset.
-    matchset2 = volume_matching(gpmfile,
-                                grfile,
-                                grfile2=grfile2,
-                                gr_offset=pass2_offset,
-                                radar_band=radar_band,
-                                refl_name=refl_name,
-                                fname_prefix=fname_prefix,
-                                gr_beamwidth=gr_beamwidth,
-                                gr_refl_threshold=gr_refl_threshold,
-                                gpm_refl_threshold=gpm_refl_threshold,
-                                write_output=False)
+        pass_offset = matchset.attrs['offset_found']
+        if np.isnan(pass_offset):
+            raise ValueError('Pass offset NAN.')
 
-    # Offset between the ground radar and the satellite.
-    pass3_offset = matchset2.attrs['final_offset']
+        counter += 1
+        if counter == 6:
+            print(f'Solution did not converge for {gpmfile}.')
+            break
 
-    # Running the second pass with the new offset.
-    matchset3 = volume_matching(gpmfile,
-                                grfile,
-                                grfile2=grfile2,
-                                gr_offset=pass3_offset,
-                                radar_band=radar_band,
-                                refl_name=refl_name,
-                                fname_prefix=fname_prefix,
-                                gr_beamwidth=gr_beamwidth,
-                                gr_refl_threshold=gr_refl_threshold,
-                                gpm_refl_threshold=gpm_refl_threshold,
-                                write_output=False)
-
-    outfilename = matchset.attrs['filename'].replace('.nc', '.pass1.nc')
-    outfilename2 = matchset2.attrs['filename'].replace('.nc', '.pass2.nc')
-    outfilename3 = matchset3.attrs['filename'].replace('.nc', '.pass3.nc')
-
+    outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
     savedata(matchset, output_dir, outfilename)
-    savedata(matchset2, output_dir, outfilename2)
-    savedata(matchset3, output_dir, outfilename3)
 
     return None
