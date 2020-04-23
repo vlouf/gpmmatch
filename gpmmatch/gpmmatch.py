@@ -363,6 +363,7 @@ def vmatch_multi_pass(gpmfile,
                                gpm_refl_threshold=gpm_refl_threshold,
                                write_output=False)
     pass_offset = matchset.attrs['offset_found']
+    offset_keeping_track = [pass_offset]
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
     counter = 0
@@ -381,6 +382,7 @@ def vmatch_multi_pass(gpmfile,
                                    write_output=False)
 
         pass_offset = matchset.attrs['offset_found']
+        offset_keeping_track.append(pass_offset)
         if np.isnan(pass_offset):
             raise ValueError('Pass offset NAN.')
 
@@ -390,6 +392,7 @@ def vmatch_multi_pass(gpmfile,
             break
 
     matchset.attrs['iteration_number'] = counter
+    matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
     outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
     savedata(matchset, output_dir, outfilename)
 
