@@ -364,6 +364,11 @@ def vmatch_multi_pass(gpmfile,
     pass_offset = matchset.attrs['offset_found']
     offset_keeping_track = [pass_offset]
 
+    matchset.attrs['iteration_number'] = 0
+    matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
+    outfilename = matchset.attrs['filename'].replace('.nc', f'.pass0.nc')
+    savedata(matchset, output_dir, outfilename)
+
     # Multiple pass as long as the difference is more than 1dB or counter is 6
     counter = 0
     while np.abs(pass_offset) > 1:
@@ -388,14 +393,16 @@ def vmatch_multi_pass(gpmfile,
             raise ValueError('Pass offset NAN.')
         if np.abs(offset_keeping_track[-1]) - np.abs(offset_keeping_track[-2]) < 0:
             # Solution converged already.
+            counter = 0
             break
         if counter == 6:
             print(f'Solution did not converge for {gpmfile}.')
             break
 
-    matchset.attrs['iteration_number'] = counter
-    matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
-    outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
-    savedata(matchset, output_dir, outfilename)
+    if counter != 0:
+        matchset.attrs['iteration_number'] = counter
+        matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
+        outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
+        savedata(matchset, output_dir, outfilename)
 
     return None
