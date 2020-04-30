@@ -227,8 +227,8 @@ def volume_matching(gpmfile,
         w = volgr[sl][rpos] * np.exp(-(d[rpos] / (ds[ii, jj] / 2)) ** 2)
 
         data['refl_gr_weigthed'][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
-        data['refl_gr_raw'][ii, jj] = np.mean(refl_gr_raw)
-        data['refl_gr_raw'][ii, jj] = np.mean(pir_gr[sl][rpos].flatten())
+        data['refl_gr_raw'][ii, jj] = np.nanmean(refl_gr_raw)
+        data['refl_gr_raw'][ii, jj] = np.nanmean(pir_gr[sl][rpos].flatten())
 
         data['zrefl_gr_weigthed'][ii, jj] = 10 * np.log10(np.sum(w * zrefl_gr_raw) / np.sum(w[~refl_gr_raw.mask]))
         data['zrefl_gr_raw'][ii, jj] = 10 * np.log10(np.mean(zrefl_gr_raw))
@@ -368,6 +368,7 @@ def vmatch_multi_pass(gpmfile,
     # Multiple pass as long as the difference is more than 1dB or counter is 6
     counter = 0
     while np.abs(pass_offset) > 1:
+        counter += 1
         gr_offset = matchset.attrs['final_offset']
         matchset = volume_matching(gpmfile,
                                    grfile,
@@ -383,10 +384,12 @@ def vmatch_multi_pass(gpmfile,
 
         pass_offset = matchset.attrs['offset_found']
         offset_keeping_track.append(pass_offset)
+
         if np.isnan(pass_offset):
             raise ValueError('Pass offset NAN.')
-
-        counter += 1
+        if np.abs(offset_keeping_track[-1]) - np.abs(offset_keeping_track[-2]) < 0:
+            # Solution converged already.
+            break
         if counter == 6:
             print(f'Solution did not converge for {gpmfile}.')
             break
