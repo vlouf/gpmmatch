@@ -381,14 +381,6 @@ def data_load_and_checks(gpmfile,
     if nprof < 10:
         raise NoPrecipitationError('No precipitation measured by GPM inside radar domain.')
 
-    brightband_domain = ((gpmset.heightBB.values[gr_domain] > 0) &
-                         (gpmset.widthBB.values[gr_domain] > 0) &
-                         (gpmset.quality.values[gr_domain] == 1))
-    if brightband_domain.sum() < 10:
-        is_brightband = False
-    else:
-        is_brightband = True
-
     # Parallax correction
     sr_xp, sr_yp, z_sr = correct.correct_parallax(xgpm, ygpm, gpmset)
 
@@ -398,15 +390,7 @@ def data_load_and_checks(gpmfile,
     elev_sr_grref = np.rad2deg(np.arctan2(np.cos(gamma) - (gr_gaussian_radius + gralt) / (gr_gaussian_radius + z_sr), np.sin(gamma)))
 
     # Convert reflectivity band correction
-    if is_brightband:
-        refp_strat, refp_conv = correct.convert_sat_refl_to_gr_band(gpmset.zFactorCorrected.values,
-                                                                    z_sr,
-                                                                    gpmset.heightBB.values,
-                                                                    gpmset.widthBB.values,
-                                                                    radar_band=radar_band)
-    else:
-        refp_strat, refp_conv = correct.convert_gpmrefl_grband_dfr(gpmset.zFactorCorrected.values,
-                                                                   radar_band=radar_band)
+    reflgpm_grband = correct.convert_gpmrefl_grband_dfr(gpmset.zFactorCorrected.values, radar_band=radar_band)
 
     gpmset = gpmset.merge({'precip_in_gr_domain':  (('nscan', 'nray'), gpmset.flagPrecip.values & gr_domain),
                            'range_from_gr': (('nscan', 'nray'), rproj_gpm),
@@ -414,8 +398,7 @@ def data_load_and_checks(gpmfile,
                            'x': (('nscan', 'nray', 'nbin'), sr_xp),
                            'y': (('nscan', 'nray', 'nbin'), sr_yp),
                            'z': (('nscan', 'nray', 'nbin'), z_sr),
-                           'strat_reflectivity_grband': (('nscan', 'nray', 'nbin'), refp_strat),
-                           'conv_reflectivity_grband': (('nscan', 'nray', 'nbin'), refp_conv)})
+                           'reflectivity_grband': (('nscan', 'nray', 'nbin'), reflgpm_grband)})
 
     gpmset.x.attrs['units'] = 'm'
     gpmset.x.attrs['description'] = 'x-axis parallax corrected coordinates in relation to ground radar.'

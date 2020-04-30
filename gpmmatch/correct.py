@@ -67,140 +67,11 @@ def correct_parallax(sr_x, sr_y, gpmset):
     return sr_xp, sr_yp, z_sr
 
 
-def convert_sat_refl_to_gr_band(refl_gpm, zp, zbb, bbwidth, radar_band=None):
-    """
-    Convert the satellite reflectivity to S, C, or X-band using the Cao et al.
-    (2013) method.
-
-    Parameters:
-    ===========
-    refl_gpm:
-        Satellite reflectivity field.
-    zp:
-        Altitude.
-    zbb:
-        Bright band height.
-    bbwidth:
-        Bright band width.
-    radar_band: str
-        Possible values are 'S', 'C', or 'X'
-
-    Return:
-    =======
-    refl_gpm_ss:
-        Stratiform reflectivity conversion from Ku-band to S-band
-    refl_gpm_sh:
-        Convective reflectivity conversion from Ku-band to S-band
-    """
-    if radar_band not in ['S', 'C', 'X']:
-        raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
-
-    refl_gpm_ss = np.zeros_like(refl_gpm) # snow
-    refl_gpm_sh = np.zeros_like(refl_gpm) # hail
-
-    # Set coefficients for conversion from Ku-band to S-band
-    #        Rain      90%      80%      70%      60%      50%      40%      30%      20%      10%     Snow
-    as0 = [ 4.78e-2, 4.12e-2, 8.12e-2, 1.59e-1, 2.87e-1, 4.93e-1, 8.16e-1, 1.31e+0, 2.01e+0, 2.82e+0, 1.74e-1]
-    as1 = [ 1.23e-2, 3.66e-3, 2.00e-3, 9.42e-4, 5.29e-4, 5.96e-4, 1.22e-3, 2.11e-3, 3.34e-3, 5.33e-3, 1.35e-2]
-    as2 = [-3.50e-4, 1.17e-3, 1.04e-3, 8.16e-4, 6.59e-4, 5.85e-4, 6.13e-4, 7.01e-4, 8.24e-4, 1.01e-3,-1.38e-3]
-    as3 = [-3.30e-5,-8.08e-5,-6.44e-5,-4.97e-5,-4.15e-5,-3.89e-5,-4.15e-5,-4.58e-5,-5.06e-5,-5.78e-5, 4.74e-5]
-    as4 = [ 4.27e-7, 9.25e-7, 7.41e-7, 6.13e-7, 5.80e-7, 6.16e-7, 7.12e-7, 8.22e-7, 9.39e-7, 1.10e-6, 0]
-    #        Rain      90%      80%      70%      60%      50%      40%      30%      20%      10%     Hail
-    ah0 = [ 4.78e-2, 1.80e-1, 1.95e-1, 1.88e-1, 2.36e-1, 2.70e-1, 2.98e-1, 2.85e-1, 1.75e-1, 4.30e-2, 8.80e-2]
-    ah1 = [ 1.23e-2,-3.73e-2,-3.83e-2,-3.29e-2,-3.46e-2,-2.94e-2,-2.10e-2,-9.96e-3,-8.05e-3,-8.27e-3, 5.39e-2]
-    ah2 = [-3.50e-4, 4.08e-3, 4.14e-3, 3.75e-3, 3.71e-3, 3.22e-3, 2.44e-3, 1.45e-3, 1.21e-3, 1.66e-3,-2.99e-4]
-    ah3 = [-3.30e-5,-1.59e-4,-1.54e-4,-1.39e-4,-1.30e-4,-1.12e-4,-8.56e-5,-5.33e-5,-4.66e-5,-7.19e-5, 1.90e-5]
-    ah4 = [ 4.27e-7, 1.59e-6, 1.51e-6, 1.37e-6, 1.29e-6, 1.15e-6, 9.40e-7, 6.71e-7, 6.33e-7, 9.52e-7, 0]
-
-    zbb = np.repeat(zbb[:, :, np.newaxis], zp.shape[2], axis=2)
-    bbwidth = np.repeat(bbwidth[:, :, np.newaxis], zp.shape[2], axis=2)
-
-    zmlt = zbb + bbwidth / 2.0  # APPROXIMATION!
-    zmlb = zbb - bbwidth / 2.0  # APPROXIMATION!
-    ratio = (zp - zmlb) / (zmlt - zmlb)
-
-    pos = ratio >= 1
-    # above melting layer
-    if pos.sum() > 0:
-        dfrs = (
-            as0[10]
-            + as1[10] * refl_gpm[pos]
-            + as2[10] * refl_gpm[pos] ** 2
-            + as3[10] * refl_gpm[pos] ** 3
-            + as4[10] * refl_gpm[pos] ** 4
-        )
-        dfrh = (
-            ah0[10]
-            + ah1[10] * refl_gpm[pos]
-            + ah2[10] * refl_gpm[pos] ** 2
-            + ah3[10] * refl_gpm[pos] ** 3
-            + ah4[10] * refl_gpm[pos] ** 4
-        )
-        refl_gpm_ss[pos] = refl_gpm[pos] + dfrs
-        refl_gpm_sh[pos] = refl_gpm[pos] + dfrh
-
-    pos = ratio <= 0
-    if pos.sum() > 0:  # below the melting layer
-        dfrs = (
-            as0[0]
-            + as1[0] * refl_gpm[pos]
-            + as2[0] * refl_gpm[pos] ** 2
-            + as3[0] * refl_gpm[pos] ** 3
-            + as4[0] * refl_gpm[pos] ** 4
-        )
-        dfrh = (
-            ah0[0]
-            + ah1[0] * refl_gpm[pos]
-            + ah2[0] * refl_gpm[pos] ** 2
-            + ah3[0] * refl_gpm[pos] ** 3
-            + ah4[0] * refl_gpm[pos] ** 4
-        )
-        refl_gpm_ss[pos] = refl_gpm[pos] + dfrs
-        refl_gpm_sh[pos] = refl_gpm[pos] + dfrh
-
-    pos = (ratio > 0) & (ratio < 1)
-    if pos.sum() > 0:  # within the melting layer
-        ind = np.round(ratio[pos]).astype(int)[0]
-        dfrs = (
-            as0[ind]
-            + as1[ind] * refl_gpm[pos]
-            + as2[ind] * refl_gpm[pos] ** 2
-            + as3[ind] * refl_gpm[pos] ** 3
-            + as4[ind] * refl_gpm[pos] ** 4
-        )
-        dfrh = (
-            ah0[ind]
-            + ah1[ind] * refl_gpm[pos]
-            + ah2[ind] * refl_gpm[pos] ** 2
-            + ah3[ind] * refl_gpm[pos] ** 3
-            + ah4[ind] * refl_gpm[pos] ** 4
-        )
-        refl_gpm_ss[pos] = refl_gpm[pos] + dfrs
-        refl_gpm_sh[pos] = refl_gpm[pos] + dfrh
-
-    # Jackson Tan's fix for C-band
-    if radar_band == "C":
-        deltas = 5.3 / 10.0 * (refl_gpm_ss - refl_gpm)
-        refl_gpm_ss = refl_gpm + deltas
-        deltah = 5.3 / 10.0 * (refl_gpm_sh - refl_gpm)
-        refl_gpm_sh = refl_gpm + deltah
-    elif radar_band == "X":
-        deltas = 3.2 / 10.0 * (refl_gpm_ss - refl_gpm)
-        refl_gpm_ss = refl_gpm + deltas
-        deltah = 3.2 / 10.0 * (refl_gpm_sh - refl_gpm)
-        refl_gpm_sh = refl_gpm + deltah
-
-    return np.ma.masked_invalid(refl_gpm_ss), np.ma.masked_invalid(refl_gpm_sh)
-
-
 def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
     '''
     Convert GPM reflectivity to ground radar band using the DFR relationship
     found in Louf et al. (2019) paper.
 
-    NOTE: It's a continuous relationship, so here there is no difference here
-    between conv/strat.
-
     Parameters:
     ===========
     refl_gpm:
@@ -210,10 +81,8 @@ def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
 
     Return:
     =======
-    refl_strat:
-        Stratiform reflectivity conversion from Ku-band to S-band
-    refl_conv:
-        Convective reflectivity conversion from Ku-band to S-band
+    refl:
+        Reflectivity conversion from Ku-band to ground radar band
     '''
     if radar_band == 'S':
         cof = np.array([ 2.01236803e-07, -6.50694273e-06,  1.10885533e-03, -6.47985914e-02, -7.46518423e-02])
@@ -226,13 +95,9 @@ def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
         cof = np.array([ 1.21547932e-06, -1.23266138e-04,  6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
         dfr = 3.2 / 5.5 * np.poly1d(cof)
     else:
-         raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
+         raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')        
 
-    # It's a continuous relationship, so here there is no difference between conv/strat.
-    refl_strat = refl_gpm + dfr(refl_gpm)
-    refl_conv = refl_strat
-
-    return refl_strat, refl_conv
+    return refl_gpm + dfr(refl_gpm)    
 
 
 def compute_gaussian_curvature(lat0):
