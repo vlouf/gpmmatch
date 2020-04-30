@@ -254,7 +254,10 @@ def volume_matching(gpmfile,
     metadata = get_metadata()
     for k, v in metadata.items():
         for sk, sv in v.items():
-            matchset[k].attrs[sk] = sv
+            try:
+                matchset[k].attrs[sk] = sv
+            except KeyError:
+                continue
 
     ar = gpmset.x ** 2 + gpmset.y ** 2
     iscan, _, _ = np.where(ar == ar.min())
