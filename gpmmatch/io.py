@@ -412,10 +412,8 @@ def data_load_and_checks(gpmfile,
     gpmset.range_from_gr.attrs['description'] = 'Range from satellite bins in relation to ground radar'
     gpmset.elev_from_gr.attrs['units'] = 'degrees'
     gpmset.elev_from_gr.attrs['description'] = 'Elevation from satellite bins in relation to ground radar'
-    gpmset.strat_reflectivity_grband.attrs['units'] = 'dBZ'
-    gpmset.strat_reflectivity_grband.attrs['description'] = f'Reflectivity of stratiform precipitation converted to {radar_band}-band.'
-    gpmset.conv_reflectivity_grband.attrs['units'] = 'dBZ'
-    gpmset.conv_reflectivity_grband.attrs['description'] = f'Reflectivity of convective precipitation converted to {radar_band}-band.'
+    gpmset.reflgpm_grband.attrs['units'] = 'dBZ'
+    gpmset.reflgpm_grband.attrs['description'] = f'Reflectivity of stratiform precipitation converted to {radar_band}-band.'    
     gpmset.attrs['nprof'] = nprof
     gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
 
