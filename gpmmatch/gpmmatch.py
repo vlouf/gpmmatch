@@ -143,8 +143,7 @@ def volume_matching(gpmfile,
         rsat[i, :] = gpmset.distance_from_sr.values
 
     refl_gpm_raw = gpmset.zFactorCorrected.values[position_precip_domain]
-    refl_gpm_stratgrband = gpmset.strat_reflectivity_grband.values[position_precip_domain]
-    refl_gpm_convgrband = gpmset.conv_reflectivity_grband.values[position_precip_domain]
+    refl_gpm_grband = gpmset.reflgpm_grband.values[position_precip_domain]
 
     volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth) / 2) ** 2  # km3
     volgr = 1e-9 * np.pi * dr * (R * np.pi / 180 * bwr / 2) ** 2  # km3
@@ -157,9 +156,9 @@ def volume_matching(gpmfile,
     pir_gpm = np.ma.masked_invalid(pir_gpm)
 
     # Initialising output data.
-    datakeys = ['refl_gpm_raw', 'refl_gr_weigthed', 'refl_gpm_strat', 'refl_gpm_conv', 'pir_gpm', 'pir_gr',
-                'refl_gr_raw', 'std_refl_gpm', 'std_refl_gr', 'zrefl_gpm_raw', 'zrefl_gr_weigthed', 'zrefl_gpm_strat',
-                'zrefl_gpm_conv', 'zrefl_gr_raw', 'std_zrefl_gpm', 'std_zrefl_gr', 'sample_gpm', 'reject_gpm',
+    datakeys = ['refl_gpm_raw', 'refl_gr_weigthed', 'refl_gpm_grband', 'pir_gpm', 'pir_gr',
+                'refl_gr_raw', 'std_refl_gpm', 'std_refl_gr', 'zrefl_gpm_raw', 'zrefl_gr_weigthed',
+                'zrefl_gpm_grband', 'zrefl_gr_raw', 'std_zrefl_gpm', 'std_zrefl_gr', 'sample_gpm', 'reject_gpm',
                 'sample_gr', 'reject_gr', 'volume_match_gpm', 'volume_match_gr']
 
     data = dict()
@@ -192,21 +191,18 @@ def volume_matching(gpmfile,
             continue
 
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
-        refl_gpm_s = refl_gpm_stratgrband[ii, epos].flatten()
-        refl_gpm_c = refl_gpm_convgrband[ii, epos].flatten()
+        refl_gpm_grband = refl_gpm_grband[ii, epos].flatten()
 
         if np.all(np.isnan(refl_gpm)):
             continue
 
         data['refl_gpm_raw'][ii, jj] = np.nanmean(refl_gpm)
-        data['refl_gpm_strat'][ii, jj] = np.nanmean(refl_gpm_s)
-        data['refl_gpm_conv'][ii, jj] = np.nanmean(refl_gpm_c)
+        data['refl_gpm_grband'][ii, jj] = np.nanmean(refl_gpm_grband)
         data['pir_gpm'][ii, jj] = np.nanmean(pir_gpm[ii, epos].flatten())
         data['std_refl_gpm'][ii, jj] = np.nanstd(refl_gpm)
 
         data['zrefl_gpm_raw'][ii, jj] = 10 * np.log10(np.nanmean(10 ** (refl_gpm / 10)))
-        data['zrefl_gpm_strat'][ii, jj] = 10 * np.log10(np.nanmean(10 ** (refl_gpm_s / 10)))
-        data['zrefl_gpm_conv'][ii, jj] = 10 * np.log10(np.nanmean(10 ** (refl_gpm_c / 10)))
+        data['zrefl_gpm_grband'][ii, jj] = 10 * np.log10(np.nanmean(10 ** (refl_gpm_grband / 10)))
         data['std_zrefl_gpm'][ii, jj] = 10 * np.log10(np.nanstd(10 ** (refl_gpm / 10)))
 
         # Number of rejected bins
@@ -228,7 +224,7 @@ def volume_matching(gpmfile,
 
         data['refl_gr_weigthed'][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
         data['refl_gr_raw'][ii, jj] = np.nanmean(refl_gr_raw)
-        data['refl_gr_raw'][ii, jj] = np.nanmean(pir_gr[sl][rpos].flatten())
+        data['pir_gr'][ii, jj] = np.nanmean(pir_gr[sl][rpos].flatten())
 
         data['zrefl_gr_weigthed'][ii, jj] = 10 * np.log10(np.sum(w * zrefl_gr_raw) / np.sum(w[~refl_gr_raw.mask]))
         data['zrefl_gr_raw'][ii, jj] = 10 * np.log10(np.mean(zrefl_gr_raw))
