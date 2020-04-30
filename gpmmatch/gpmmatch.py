@@ -193,20 +193,20 @@ def volume_matching(gpmfile,
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
         refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
 
-        if np.all(np.isnan(refl_gpm)):
+        if np.all(np.isnan(refl_gpm.filled(np.NaN))):
             continue
 
-        data['refl_gpm_raw'][ii, jj] = np.nanmean(refl_gpm)
-        data['refl_gpm_grband'][ii, jj] = np.nanmean(refl_gpm_grband)
-        data['pir_gpm'][ii, jj] = np.nanmean(pir_gpm[ii, epos].flatten())
-        data['std_refl_gpm'][ii, jj] = np.nanstd(refl_gpm)
+        data['refl_gpm_raw'][ii, jj] = np.mean(refl_gpm)
+        data['refl_gpm_grband'][ii, jj] = np.mean(refl_gpm_grband)
+        data['pir_gpm'][ii, jj] = np.mean(pir_gpm[ii, epos].flatten())
+        data['std_refl_gpm'][ii, jj] = np.std(refl_gpm)
 
-        data['zrefl_gpm_raw'][ii, jj] = 10 * np.log10(np.nanmean(10 ** (refl_gpm / 10)))
-        data['zrefl_gpm_grband'][ii, jj] = 10 * np.log10(np.nanmean(10 ** (refl_gpm_grband / 10)))
-        data['std_zrefl_gpm'][ii, jj] = 10 * np.log10(np.nanstd(10 ** (refl_gpm / 10)))
+        data['zrefl_gpm_raw'][ii, jj] = 10 * np.log10(np.mean(10 ** (refl_gpm / 10)))
+        data['zrefl_gpm_grband'][ii, jj] = 10 * np.log10(np.mean(10 ** (refl_gpm_grband / 10)))
+        data['std_zrefl_gpm'][ii, jj] = 10 * np.log10(np.std(10 ** (refl_gpm / 10)))
 
         # Number of rejected bins
-        data['reject_gpm'][ii, jj] = np.sum(epos) - np.sum(np.isnan(refl_gpm))
+        data['reject_gpm'][ii, jj] = np.sum(epos) - np.sum(refl_gpm.mask)
 
         # Ground radar time.
         sl = radar.get_slice(jj)
