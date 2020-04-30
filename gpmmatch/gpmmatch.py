@@ -143,7 +143,7 @@ def volume_matching(gpmfile,
         rsat[i, :] = gpmset.distance_from_sr.values
 
     refl_gpm_raw = gpmset.zFactorCorrected.values[position_precip_domain]
-    refl_gpm_grband = gpmset.reflectivity_grband.values[position_precip_domain]
+    reflectivity_gpm_grband = gpmset.reflectivity_grband.values[position_precip_domain]
 
     volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth) / 2) ** 2  # km3
     volgr = 1e-9 * np.pi * dr * (R * np.pi / 180 * bwr / 2) ** 2  # km3
@@ -191,7 +191,7 @@ def volume_matching(gpmfile,
             continue
 
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
-        refl_gpm_grband = refl_gpm_grband[ii, epos].flatten()
+        refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
 
         if np.all(np.isnan(refl_gpm)):
             continue
