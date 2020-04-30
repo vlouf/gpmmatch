@@ -363,6 +363,7 @@ def vmatch_multi_pass(gpmfile,
                                write_output=False)
     pass_offset = matchset.attrs['offset_found']
     offset_keeping_track = [pass_offset]
+    final_offset_keeping_track = [matchset.attrs['final_offset']]
 
     matchset.attrs['iteration_number'] = 0
     matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
@@ -388,10 +389,11 @@ def vmatch_multi_pass(gpmfile,
 
         pass_offset = matchset.attrs['offset_found']
         offset_keeping_track.append(pass_offset)
+        final_offset_keeping_track.append(matchset.attrs['final_offset'])
 
         if np.isnan(pass_offset):
             raise ValueError('Pass offset NAN.')
-        if np.abs(offset_keeping_track[-1]) - np.abs(offset_keeping_track[-2]) < 0:
+        if np.abs(final_offset_keeping_track[-1]) - np.abs(final_offset_keeping_track[-2]) < 0:
             # Solution converged already.
             counter = 0
             break
