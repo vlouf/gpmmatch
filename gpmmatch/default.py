@@ -5,14 +5,14 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 24/02/2020
-@date: 24/02/2020
+@date: 30/04/2020
     get_metadata
 '''
 
 
 def get_metadata():
     '''
-    Return a bunch of metadata (description, units, long_name, etc.) for the 
+    Return a bunch of metadata (description, units, long_name, etc.) for the
     output dataset.
 
     Returns:
@@ -25,15 +25,10 @@ def get_metadata():
             "long_name": "GPM_reflectivity",
             "description": "GPM reflectivity volume-matched to ground radar.",
         },
-        "refl_gpm_strat": {
+        "refl_gpm_grband": {
             "units": "dBZ",
             "long_name": "GPM_reflectivity_grband_stratiform",
-            "description": "GR-frequency band converted GPM reflectivity volume-matched to ground radar - stratiform approximation.",
-        },
-        "refl_gpm_conv": {
-            "units": "dBZ",
-            "long_name": "GPM_reflectivity_grband_convective",
-            "description": "GR-frequency band converted GPM reflectivity volume-matched to ground radar - convective approximation.",
+            "description": "GPM reflectivity converted to ground radar frequency band.",
         },
         "refl_gr_raw": {
             "units": "dBZ",
