@@ -142,8 +142,8 @@ def volume_matching(gpmfile,
     for i in range(rsat.shape[0]):
         rsat[i, :] = gpmset.distance_from_sr.values
 
-    refl_gpm_raw = gpmset.zFactorCorrected.values[position_precip_domain]
-    reflectivity_gpm_grband = gpmset.reflectivity_grband.values[position_precip_domain]
+    refl_gpm_raw = np.ma.masked_invalid(gpmset.zFactorCorrected.values[position_precip_domain])
+    reflectivity_gpm_grband = np.ma.masked_invalid(gpmset.reflectivity_grband.values[position_precip_domain])
 
     volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth) / 2) ** 2  # km3
     volgr = 1e-9 * np.pi * dr * (R * np.pi / 180 * bwr / 2) ** 2  # km3
@@ -223,8 +223,8 @@ def volume_matching(gpmfile,
         w = volgr[sl][rpos] * np.exp(-(d[rpos] / (ds[ii, jj] / 2)) ** 2)
 
         data['refl_gr_weigthed'][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
-        data['refl_gr_raw'][ii, jj] = np.nanmean(refl_gr_raw)
-        data['pir_gr'][ii, jj] = np.nanmean(pir_gr[sl][rpos].flatten())
+        data['refl_gr_raw'][ii, jj] = np.mean(refl_gr_raw)
+        data['pir_gr'][ii, jj] = np.mean(pir_gr[sl][rpos].flatten())
 
         data['zrefl_gr_weigthed'][ii, jj] = 10 * np.log10(np.sum(w * zrefl_gr_raw) / np.sum(w[~refl_gr_raw.mask]))
         data['zrefl_gr_raw'][ii, jj] = 10 * np.log10(np.mean(zrefl_gr_raw))
