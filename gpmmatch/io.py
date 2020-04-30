@@ -88,7 +88,7 @@ def get_gpm_orbit(gpmfile):
     return int(orbit)
 
 
-def read_GPM(infile, refl_min_thld):
+def read_GPM(infile, refl_min_thld=17):
     '''
     Read GPM data and organize them into a Dataset.
 
@@ -128,7 +128,9 @@ def read_GPM(infile, refl_min_thld):
                         data[sk] = (dims, hid[f'/NS/{k}/{sk}'][:] / 10000000)
                     elif sk == 'zFactorCorrected':
                         # Reverse direction along the beam.
-                        data[sk] = (dims, np.ma.masked_less_equal(hid[f'/NS/{k}/{sk}'][:][:, :, ::-1], refl_min_thld))
+                        gpm_refl = hid[f'/NS/{k}/{sk}'][:][:, :, ::-1]
+                        gpm_refl[gpm_refl < 0] = np.NaN
+                        data[sk] = (dims, np.ma.masked_invalid(np.ma.masked_less_equal(gpm_refl, refl_min_thld)))
                     elif sk == 'flagPrecip':
                         data[sk] = (dims, np.ma.masked_invalid(hid[f'/NS/{k}/{sk}'][:]).filled(0).astype(bool))
                     else:
@@ -143,7 +145,7 @@ def read_GPM(infile, refl_min_thld):
     quality = np.zeros(data['heightBB'][-1].shape, dtype=np.int32)
     quality[((data['qualityBB'][-1] == 0) | (data['qualityBB'][-1] == 1)) & (data['qualityTypePrecip'][-1] == 1)] = 1
     quality[(data['qualityBB'][-1] > 1) | (data['qualityTypePrecip'][-1] > 1)] = 2
-    data['quality'] = (data['heightBB'][0], quality)    
+    data['quality'] = (data['heightBB'][0], quality)
 
     # Generate dimensions.
     nray = np.linspace(-17.04, 17.04, 49)
@@ -323,7 +325,7 @@ def data_load_and_checks(gpmfile,
                          grfile,
                          grfile2=None,
                          refl_name=None,
-                         radar_band=None,
+                         radar_band='C',
                          gpm_refl_threshold=17):
     '''
     Load GPM and Ground radar files and perform some initial checks:
@@ -413,7 +415,7 @@ def data_load_and_checks(gpmfile,
     gpmset.elev_from_gr.attrs['units'] = 'degrees'
     gpmset.elev_from_gr.attrs['description'] = 'Elevation from satellite bins in relation to ground radar'
     gpmset.reflectivity_grband.attrs['units'] = 'dBZ'
-    gpmset.reflectivity_grband.attrs['description'] = f'Reflectivity of stratiform precipitation converted to {radar_band}-band.'    
+    gpmset.reflectivity_grband.attrs['description'] = f'Reflectivity of stratiform precipitation converted to {radar_band}-band.'
     gpmset.attrs['nprof'] = nprof
     gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
 
