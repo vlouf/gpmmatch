@@ -24,6 +24,22 @@ from .io import data_load_and_checks
 from .default import get_metadata
 
 
+def _mkdir(dir):
+    """
+    Make directory. Might seem redundant but you might have concurrency issue
+    when dealing with multiprocessing.
+    """
+    if os.path.exists(dir):
+        return None
+
+    try:
+        os.mkdir(dir)
+    except FileExistsError:
+        pass
+
+    return None
+
+
 def savedata(matchset, output_dir, outfilename):
     '''
     Save dataset as a netCDF4.
@@ -351,6 +367,8 @@ def vmatch_multi_pass(gpmfile,
 
     output_dir_first_pass = os.path.join(output_dir, 'first_pass')
     output_dir_final_pass = os.path.join(output_dir, 'final_pass')
+    _mkdir(output_dir_first_pass)
+    _mkdir(output_dir_final_pass)
 
     # First pass
     matchset = volume_matching(gpmfile,
