@@ -210,9 +210,9 @@ def volume_matching(gpmfile,
 
         # Ground radar side:
         sl = radar.get_slice(jj)
-        d = np.sqrt((xradar[sl] - x[ii, jj]) ** 2 + (yradar[sl] - y[ii, jj]) ** 2)
-        rpos = (d <= ds[ii, jj] / 2)        
-        w = volgr[sl][rpos] * np.exp(-(d[rpos] / (ds[ii, jj] / 2)) ** 2)
+        roi_gr_at_vol = np.sqrt((xradar[sl] - x[ii, jj]) ** 2 + (yradar[sl] - y[ii, jj]) ** 2)
+        rpos = (roi_gr_at_vol <= ds[ii, jj] / 2)        
+        w = volgr[sl][rpos] * np.exp(-(roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2)
         if np.sum(rpos) == 0:
             continue  
 
