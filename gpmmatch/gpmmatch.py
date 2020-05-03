@@ -349,6 +349,9 @@ def vmatch_multi_pass(gpmfile,
     if output_dir is None:
         output_dir = os.getcwd()
 
+    output_dir_first_pass = os.path.join(output_dir, 'first_pass')
+    output_dir_final_pass = os.path.join(output_dir, 'final_pass')
+
     # First pass
     matchset = volume_matching(gpmfile,
                                grfile,
@@ -368,25 +371,24 @@ def vmatch_multi_pass(gpmfile,
     matchset.attrs['iteration_number'] = 0
     matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
     outfilename = matchset.attrs['filename'].replace('.nc', f'.pass0.nc')
-    savedata(matchset, output_dir, outfilename)
+    savedata(matchset, output_dir_first_pass, outfilename)
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
     counter = 0
     while np.abs(pass_offset) > 1:
         counter += 1
         gr_offset = matchset.attrs['final_offset']
-        matchset = volume_matching(gpmfile,
-                                   grfile,
-                                   grfile2=grfile2,
-                                   gr_offset=gr_offset,
-                                   radar_band=radar_band,
-                                   refl_name=refl_name,
-                                   fname_prefix=fname_prefix,
-                                   gr_beamwidth=gr_beamwidth,
-                                   gr_refl_threshold=gr_refl_threshold,
-                                   gpm_refl_threshold=gpm_refl_threshold,
-                                   write_output=False)
-
+        new_matchset = volume_matching(gpmfile,
+                                       grfile,
+                                       grfile2=grfile2,
+                                       gr_offset=gr_offset,
+                                       radar_band=radar_band,
+                                       refl_name=refl_name,
+                                       fname_prefix=fname_prefix,
+                                       gr_beamwidth=gr_beamwidth,
+                                       gr_refl_threshold=gr_refl_threshold,
+                                       gpm_refl_threshold=gpm_refl_threshold,
+                                       write_output=False)
         pass_offset = matchset.attrs['offset_found']
         offset_keeping_track.append(pass_offset)
         final_offset_keeping_track.append(matchset.attrs['final_offset'])
@@ -394,17 +396,18 @@ def vmatch_multi_pass(gpmfile,
         if np.isnan(pass_offset):
             raise ValueError('Pass offset NAN.')
         if np.abs(final_offset_keeping_track[-1]) - np.abs(final_offset_keeping_track[-2]) < 0:
-            # Solution converged already.
-            counter = 0
+            # Solution converged already. Using previous iteration as final result.
+            counter -= 1
             break
+
+        matchset = new_matchset  # No error with results.
         if counter == 6:
             print(f'Solution did not converge for {gpmfile}.')
             break
 
-    if counter != 0:
-        matchset.attrs['iteration_number'] = counter
-        matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
-        outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
-        savedata(matchset, output_dir, outfilename)
+    matchset.attrs['iteration_number'] = counter
+    matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
+    outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
+    savedata(matchset, output_dir_final_pass, outfilename)
 
     return None
