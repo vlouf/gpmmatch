@@ -46,6 +46,32 @@ def _mkdir(dir):
     return None
 
 
+def get_offset(matchset):
+    '''
+    Compute the Offset between GR and GPM.
+
+    Parameter:
+    ==========
+    matchset: xr.Dataset
+        Dataset of volume matching.
+
+    Returns:
+    ========
+    offset: float
+        Offset between GR and GPM
+    '''
+    refl_gpm = matchset.refl_gpm_grband.values
+    refl_gr = matchset.refl_gr_weigthed.values
+    std_refl_gpm = matchset.std_refl_gpm.values
+    std_refl_gr = matchset.std_refl_gr.values
+
+    delta_std = np.abs(std_refl_gpm - std_refl_gr)
+    pos = delta_std[delta_std < 1]
+
+    offset = np.nanmean(refl_gr[pos] - refl_gpm[pos])
+    return offset
+
+
 def savedata(matchset, output_dir, outfilename):
     '''
     Save dataset as a netCDF4.
@@ -284,7 +310,7 @@ def volume_matching(gpmfile,
     iscan, _, _ = np.where(ar == ar.min())
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
-    offset = np.nanmean((matchset['refl_gr_weigthed'] - matchset['refl_gpm_raw']).values)
+    offset = get_offset(matchset)
 
     if np.isnan(offset):
         raise NoRainError('No offset found.')
