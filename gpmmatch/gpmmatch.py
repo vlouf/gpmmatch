@@ -26,6 +26,10 @@ from .io import data_load_and_checks
 from .default import get_metadata
 
 
+class NoRainError(Exception):
+    pass
+
+
 def _mkdir(dir):
     """
     Make directory. Might seem redundant but you might have concurrency issue
@@ -283,7 +287,7 @@ def volume_matching(gpmfile,
     offset = np.nanmean((matchset['refl_gr_weigthed'] - matchset['refl_gpm_raw']).values)
 
     if np.isnan(offset):
-        raise ValueError('No offset found.')
+        raise NoRainError('No offset found.')
 
     radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
     radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
