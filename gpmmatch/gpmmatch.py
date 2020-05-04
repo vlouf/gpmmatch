@@ -252,6 +252,11 @@ def volume_matching(gpmfile,
         refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()
         zrefl_gr_raw = 10 ** (refl_gr_raw / 10)
 
+        if np.sum(refl_gpm >= gpm_refl_threshold) / len(refl_gpm) < 0.7:
+            # fmin parameter (Fig 5 Rob's paper).
+            continue
+        if np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw) < 0.7:
+            continue
         if np.all(np.isnan(refl_gpm.filled(np.NaN))):
             continue
         if np.all(np.isnan(refl_gr_raw.filled(np.NaN))):
