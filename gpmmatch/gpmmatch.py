@@ -359,8 +359,8 @@ def vmatch_multi_pass(gpmfile,
                       refl_name='corrected_reflectivity',
                       fname_prefix=None,
                       gr_beamwidth=1,
-                      gr_refl_threshold=10,
-                      gpm_refl_threshold=14,
+                      gr_refl_threshold=19,
+                      gpm_refl_threshold=21,
                       output_dir=None,
                       write_output=True):
     '''
