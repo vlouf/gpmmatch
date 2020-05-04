@@ -359,8 +359,8 @@ def vmatch_multi_pass(gpmfile,
                       refl_name='corrected_reflectivity',
                       fname_prefix=None,
                       gr_beamwidth=1,
-                      gr_refl_threshold=21,
-                      gpm_refl_threshold=21,
+                      gr_refl_threshold=10,
+                      gpm_refl_threshold=14,
                       output_dir=None,
                       write_output=True):
     '''
@@ -424,7 +424,9 @@ def vmatch_multi_pass(gpmfile,
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
     counter = 0
-    while np.abs(pass_offset) > 1:
+    offset_thld = 0.5
+    while np.abs(pass_offset) > offset_thld:
+        offset_thld = 1
         counter += 1
         gr_offset = matchset.attrs['final_offset']
         new_matchset = volume_matching(gpmfile,
