@@ -163,8 +163,8 @@ def volume_matching(gpmfile,
     elev_gr = np.unique(radar.elevation['data'])
     xradar = radar.gate_x['data']
     yradar = radar.gate_y['data']
-    tradar = cftime.num2pydate(radar.time['data'], radar.time['units'])
-    deltat = (tradar - gpmset.overpass_time.values).seconds
+    tradar = cftime.num2pydate(radar.time['data'], radar.time['units']).astype('datetime64')
+    deltat = (tradar - gpmset.overpass_time.values)
 
     rmax_gr = range_gr.max()
     dr = range_gr[1] - range_gr[0]
@@ -256,7 +256,7 @@ def volume_matching(gpmfile,
         refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()
         zrefl_gr_raw = 10 ** (refl_gr_raw / 10)
         delta_t[ii, jj] = np.max(DT[sl][rpos])
-        
+
         if np.all(np.isnan(refl_gpm.filled(np.NaN))):
             continue
         if np.all(np.isnan(refl_gr_raw.filled(np.NaN))):
