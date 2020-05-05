@@ -163,11 +163,14 @@ def volume_matching(gpmfile,
     elev_gr = np.unique(radar.elevation['data'])
     xradar = radar.gate_x['data']
     yradar = radar.gate_y['data']
+    tradar = cftime.num2pydate(radar.time['data'], radar.time['units'])
+    deltat = (tradar - gpmset.overpass_time.values).seconds
 
     rmax_gr = range_gr.max()
     dr = range_gr[1] - range_gr[0]
 
     R, _ = np.meshgrid(radar.range['data'], radar.azimuth['data'])
+    _, DT = np.meshgrid(radar.range['data'], deltat)
 
     # Substract offset to the ground radar reflectivity
     ground_radar_reflectivity = radar.fields[refl_name]['data'].copy().filled(np.NaN) - gr_offset
@@ -220,6 +223,7 @@ def volume_matching(gpmfile,
     r = np.zeros((nprof, ntilt))  # range of sample from ground radar
     dz = np.zeros((nprof, ntilt))  # depth of sample
     ds = np.zeros((nprof, ntilt))  # width of sample
+    delta_t = np.zeros((nprof, ntilt)) + np.NaN  # Timedelta of sample
 
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
         epos = (elev_sat[ii, :] >= elev_gr[jj] - bwr / 2) & (elev_sat[ii, :] <= elev_gr[jj] + bwr / 2)
@@ -251,6 +255,7 @@ def volume_matching(gpmfile,
         refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
         refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()
         zrefl_gr_raw = 10 ** (refl_gr_raw / 10)
+        delta_t[ii, jj] = np.max(DT[sl][rpos])
         
         if np.all(np.isnan(refl_gpm.filled(np.NaN))):
             continue
@@ -291,6 +296,7 @@ def volume_matching(gpmfile,
     data['nprof'] = np.arange(nprof, dtype=np.int32)
     data['ntilt'] = np.arange(ntilt, dtype=np.int32)
     data['elevation_gr'] = elev_gr[:ntilt]
+    data['timedelta'] = delta_t
 
     # Transform to xarray and build metadata
     match = dict()
