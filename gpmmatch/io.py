@@ -402,6 +402,12 @@ def data_load_and_checks(gpmfile,
                            'z': (('nscan', 'nray', 'nbin'), z_sr),
                            'reflectivity_grband': (('nscan', 'nray', 'nbin'), reflgpm_grband)})
 
+    gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
+    gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
+    gpmset = gpmset.merge({'overpass_time': (gpmtime0)})
+    
+    # Attributes
+    gpmset.overpass_time.attrs['description'] = 'GPM overpass time at the closest from ground radar site'
     gpmset.x.attrs['units'] = 'm'
     gpmset.x.attrs['description'] = 'x-axis parallax corrected coordinates in relation to ground radar.'
     gpmset.y.attrs['units'] = 'm'
@@ -420,10 +426,6 @@ def data_load_and_checks(gpmfile,
     gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
 
     # Now it's turn to read the ground radar.
-    if grfile2 is not None:
-        # Get the GPM time that is the closest from the radar site.
-        gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
-        gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
     radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
 
     return gpmset, radar
