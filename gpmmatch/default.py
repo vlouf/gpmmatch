@@ -5,7 +5,7 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 24/02/2020
-@date: 30/04/2020
+@date: 05/05/2020
     get_metadata
 '''
 
@@ -134,6 +134,11 @@ def get_metadata():
             "units": "m",
             "long_name": "range",
             "description": "Range from ground radar.",
+        },
+        "timedelta": {
+            "units": "ns",
+            "long_name": "timedelta",
+            "description": "Maximum time delta between ground radar and GPM volumes.",
         },
         "elevation_gr": {
             "units": "degrees",
