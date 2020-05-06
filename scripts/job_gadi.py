@@ -31,7 +31,7 @@ def _mkdir(dir):
 
     return None
 
-    
+
 def remove(flist):
     '''
     Remove file if it exists.
@@ -78,14 +78,14 @@ def extract_zip(inzip, date, path):
             raise FileNotFoundError('No file')
 
         return grfile
-    
+
     with zipfile.ZipFile(inzip) as zid:
         namelist = zid.namelist()
         file = get_zipfile_name(namelist, date)
         zid.extract(file, path=path)
-    
+
     grfile = os.path.join(path, file)
-    
+
     return grfile
 
 
@@ -93,31 +93,31 @@ def buffer(gpmfile, date, rid):
     inzip = get_radar_archive_file(date, rid)
     if inzip is None:
         return None
-    
+
     try:
         grfile = extract_zip(inzip, date, path)
     except FileNotFoundError:
         print(f'No ground {rid} radar file for {date}.')
         return None
-    
+
     try:
         matchset = gpmmatch.vmatch_multi_pass(gpmfile,
-                                              grfile,    
+                                              grfile,
                                               radar_band='C',
                                               refl_name='reflectivity',
-                                              fname_prefix=rid,   
+                                              fname_prefix=rid,
                                               gr_refl_threshold=GR_THLD,
                                               gpm_refl_threshold=0,
                                               output_dir=OUTPATH)
-    except NoRainError:        
+    except NoRainError:
         pass
     except Exception:
         print('!!! ERROR !!!')
-        print(gpmfile)        
-        traceback.print_exc()        
-    
+        print(gpmfile)
+        traceback.print_exc()
+
     remove([grfile])
-    
+
     return None
 
 
@@ -137,15 +137,15 @@ def main():
             d = df.date[n]
             argslist.append((g, d, rid))
 
-        bag = db.from_sequence(argslist).starmap(buffer)        
-        rslt = bag.compute()        
+        bag = db.from_sequence(argslist).starmap(buffer)
+        rslt = bag.compute()
         break
 
 
 if __name__ == "__main__":
      # Parse arguments
     parser_description = """GPM volume matching on the National archive data."""
-    parser = argparse.ArgumentParser(description=parser_description)    
+    parser = argparse.ArgumentParser(description=parser_description)
     parser.add_argument(
         '-o',
         '--output',
@@ -172,9 +172,9 @@ if __name__ == "__main__":
     else:
         OUTPATH = os.path.join(args.outdir, f'gr_{GR_THLD}dB')
     _mkdir(OUTPATH)
-    
+
     CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
     path = '/scratch/kl02/vhl548/unzipdir'
-    
+
     main()
     pass
