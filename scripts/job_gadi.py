@@ -66,7 +66,24 @@ def get_radar_archive_file(date, rid):
     return file
 
 
-def extract_zip(inzip, date, path):
+def extract_zip(inzip, date, path='/scratch/kl02/vhl548/unzipdir'):
+    """
+    Extract file in a daily archive zipfile for a specific datetime.
+
+    Parameters:
+    ===========
+    inzip: str
+        Input zipfile
+    date: pd.Timestamp
+        Which datetime we want to extract.
+    path: str
+        Path where we want to temporarly store the output file.
+
+    Returns:
+    ========
+    grfile: str
+        Output ground radar file.
+    """
     def get_zipfile_name(namelist, date):
         datestr = [re.findall('[0-9]{8}_[0-9]{6}', n)[0] for n in namelist]
         timestamps = np.array([datetime.datetime.strptime(dt, '%Y%m%d_%H%M%S') for dt in datestr], dtype='datetime64')
@@ -95,7 +112,7 @@ def buffer(gpmfile, date, rid):
         return None
 
     try:
-        grfile = extract_zip(inzip, date, path)
+        grfile = extract_zip(inzip, date)
     except FileNotFoundError:
         print(f'No ground {rid} radar file for {date}.')
         return None
@@ -174,7 +191,6 @@ if __name__ == "__main__":
     _mkdir(OUTPATH)
 
     CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
-    path = '/scratch/kl02/vhl548/unzipdir'
 
     main()
     pass
