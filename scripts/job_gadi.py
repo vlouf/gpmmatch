@@ -168,7 +168,7 @@ def buffer(gpmfile, date, rid):
 def main():
     for config in CONFIG_FILES:
         rid = os.path.basename(config)[-6:-4]
-        if rid != '02':
+        if rid != RID:
             continue
         df = pd.read_csv(config, parse_dates=['date'], header=None, names=['date', 'name', 'lon', 'lat', 'nprof', 'source'])
 
@@ -179,7 +179,7 @@ def main():
                     continue
             g = df.source[n]
             d = df.date[n]
-            argslist.append((g, d, rid))
+            argslist.append((g, d, RID))
 
         bag = db.from_sequence(argslist).starmap(buffer)
         rslt = bag.compute()
@@ -198,6 +198,13 @@ if __name__ == "__main__":
         help='Output directory.',
         default=None)
     parser.add_argument(
+        '-r',
+        '--rid',
+        dest='rid',
+        type=str,
+        help='Radar ID.',
+        default='02')
+    parser.add_argument(
         '-g',
         '--gr-thld',
         dest='grthld',
@@ -210,6 +217,7 @@ if __name__ == "__main__":
     parser.set_defaults(unravel=True)
 
     args = parser.parse_args()
+    RID = args.rid
     GR_THLD = args.grthld
     if args.outdir is None:
         OUTPATH = os.path.join(os.getcwd(), f'gr_{GR_THLD}dB')
