@@ -107,6 +107,19 @@ def extract_zip(inzip, date, path='/scratch/kl02/vhl548/unzipdir'):
 
 
 def buffer(gpmfile, date, rid):
+    '''
+    Driver function that extract the ground radar file from the national
+    archive and then calls the volume matching function. Handles errors.
+
+    Parameters:
+    ===========
+    gpmfile: str
+        GPM hdf5 file to match.
+    date: pd.Timestamp
+        Timestamp of the closest overpass of GPM from the ground radar
+    rid: str
+        Groud radar identification
+    '''
     inzip = get_radar_archive_file(date, rid)
     if inzip is None:
         return None
