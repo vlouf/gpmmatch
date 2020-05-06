@@ -2,6 +2,7 @@ import os
 import re
 import glob
 import zipfile
+import argparse
 import datetime
 import traceback
 
@@ -15,6 +16,22 @@ import gpmmatch
 from gpmmatch import NoRainError
 
 
+def _mkdir(dir):
+    """
+    Make directory. Might seem redundant but you might have concurrency issue
+    when dealing with multiprocessing.
+    """
+    if os.path.exists(dir):
+        return None
+
+    try:
+        os.mkdir(dir)
+    except FileExistsError:
+        pass
+
+    return None
+
+    
 def remove(flist):
     '''
     Remove file if it exists.
@@ -126,9 +143,38 @@ def main():
 
 
 if __name__ == "__main__":
-    GR_THLD = 0
-    OUTPATH = os.path.join(os.getcwd(), f'gr_{GR_THLD}dB')
+     # Parse arguments
+    parser_description = """GPM volume matching on the National archive data."""
+    parser = argparse.ArgumentParser(description=parser_description)    
+    parser.add_argument(
+        '-o',
+        '--output',
+        dest='outdir',
+        type=str,
+        help='Output directory.',
+        default=None)
+    parser.add_argument(
+        '-g',
+        '--gr-thld',
+        dest='grthld',
+        type=float,
+        help='Ground radar reflectivity threshold.',
+        required=True)
+
+    parser.add_argument('--unravel', dest='unravel', action='store_true')
+    parser.add_argument('--no-unravel', dest='unravel', action='store_false')
+    parser.set_defaults(unravel=True)
+
+    args = parser.parse_args()
+    GR_THLD = args.grthld
+    if args.outdir is None:
+        OUTPATH = os.path.join(os.getcwd(), f'gr_{GR_THLD}dB')
+    else:
+        OUTPATH = os.path.join(args.outdir, f'gr_{GR_THLD}dB')
+    _mkdir(OUTPATH)
+    
     CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
     path = '/scratch/kl02/vhl548/unzipdir'
+    
     main()
     pass
