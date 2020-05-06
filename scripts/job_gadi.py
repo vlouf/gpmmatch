@@ -45,7 +45,6 @@ def get_radar_archive_file(date, rid):
     file = f"/g/data/rq0/level_1/odim_pvol/{rid}/{date.year}/vol/{rid}_{datestr}.pvol.zip"
     if not os.path.exists(file):
         return None
-#         raise FileNotFoundError(f'{file}')
 
     return file
 
@@ -87,69 +86,49 @@ def buffer(gpmfile, date, rid):
     try:
         matchset = gpmmatch.vmatch_multi_pass(gpmfile,
                                               grfile,    
-                                              radar_band='S',
+                                              radar_band='C',
                                               refl_name='reflectivity',
                                               fname_prefix=rid,   
-                                              gr_refl_threshold=10,
+                                              gr_refl_threshold=GR_THLD,
                                               gpm_refl_threshold=0,
-                                              write_output=False)
-    except NoRainError:
-        matchset = None
+                                              output_dir=OUTPATH)
+    except NoRainError:        
         pass
-#     except OSError:
-#         matchset = None
-#         pass
     except Exception:
         print('!!! ERROR !!!')
-        print(gpmfile)
-        print(date)
-        traceback.print_exc()
-        matchset = None
+        print(gpmfile)        
+        traceback.print_exc()        
     
     remove([grfile])
-    
-    return matchset
-
-
-def savedata(datafile, rid):    
-    dtime = pd.Timestamp(datafile.gpm_overpass_time)    
-    datestr = dtime.strftime('%Y%m%d')
-    timestr = dtime.strftime('%H%M%S')
-    
-    outpath = os.path.join(".", rid)
-    try:
-        os.mkdir(outpath)
-    except FileExistsError:
-        pass
-    
-    outfile = os.path.join(outpath, f"vmatch.{rid}.{datestr}.{timestr}.nc"   )
-    if not os.path.exists(outfile):
-        datafile.to_netcdf(outfile)
     
     return None
 
 
-config_files = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
-path = '/scratch/kl02/vhl548/unzipdir'
+def main():
+    for config in CONFIG_FILES:
+        rid = os.path.basename(config)[-6:-4]
+        if rid != '02':
+            continue
+        df = pd.read_csv(config, parse_dates=['date'], header=None, names=['date', 'name', 'lon', 'lat', 'nprof', 'source'])
 
-for config in tqdm.tqdm_notebook(config_files, total=len(config_files)):
-    rid = os.path.basename(config)[-6:-4]
-    if rid != '02':
-        continue
-    df = pd.read_csv(config, parse_dates=['date'], header=None, names=['date', 'name', 'lon', 'lat', 'nprof', 'source'])
+        argslist = []
+        for n in range(len(df)):
+            if rid == '02' or rid == '01':
+                if 'Tasmania' in df.source[n]:
+                    continue
+            g = df.source[n]
+            d = df.date[n]
+            argslist.append((g, d, rid))
 
-    argslist = []
-    for n in range(len(df)):
-        if rid == '02' or rid == '01':
-            if 'Tasmania' in df.source[n]:
-                continue
-        g = df.source[n]
-        d = df.date[n]
-        argslist.append((g, d, rid))
+        bag = db.from_sequence(argslist).starmap(buffer)        
+        rslt = bag.compute()        
+        break
 
-    bag = db.from_sequence(argslist).starmap(buffer)
-    with ProgressBar():
-        rslt = bag.compute()
 
-    rslt = [r for r in rslt if r is not None]       
-    break
+if __name__ == "__main__":
+    GR_THLD = 0
+    OUTPATH = os.path.join(os.getcwd(), f'gr_{GR_THLD}dB')
+    CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
+    path = '/scratch/kl02/vhl548/unzipdir'
+    main()
+    pass
