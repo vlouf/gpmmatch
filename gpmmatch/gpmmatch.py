@@ -109,7 +109,8 @@ def volume_matching(gpmfile,
                     gr_beamwidth=1,
                     gr_refl_threshold=21,
                     gpm_refl_threshold=21,
-                    output_dir=None):
+                    output_dir=None,
+                    write_output=True):
     '''
     Performs the volume matching of GPM satellite data to ground based radar.
 
@@ -134,7 +135,9 @@ def volume_matching(gpmfile,
     gpm_refl_threshold: float
         Minimum reflectivity threshold on GPM data.
     output_dir: str
-        Path to output directory.    
+        Path to output directory.
+    write_output: bool
+        Does it save the data automatically or not?
 
     Returns:
     --------
@@ -373,8 +376,7 @@ def vmatch_multi_pass(gpmfile,
                       gr_beamwidth=1,
                       gr_refl_threshold=19,
                       gpm_refl_threshold=21,
-                      output_dir=None,
-                      write_output=True):
+                      output_dir=None):
     '''
     Multi-pass volume matching with automatic offset computation.
 
@@ -400,8 +402,6 @@ def vmatch_multi_pass(gpmfile,
         Minimum reflectivity threshold on GPM data.
     output_dir: str
         Path to output directory.
-    write_output: bool
-        Does it save the data automatically or not?
     '''
     if fname_prefix is None:
         fname_prefix = 'unknown_radar'
