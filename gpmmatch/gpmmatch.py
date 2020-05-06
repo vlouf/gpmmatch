@@ -109,8 +109,7 @@ def volume_matching(gpmfile,
                     gr_beamwidth=1,
                     gr_refl_threshold=21,
                     gpm_refl_threshold=21,
-                    output_dir=None,
-                    write_output=True):
+                    output_dir=None):
     '''
     Performs the volume matching of GPM satellite data to ground based radar.
 
@@ -135,9 +134,7 @@ def volume_matching(gpmfile,
     gpm_refl_threshold: float
         Minimum reflectivity threshold on GPM data.
     output_dir: str
-        Path to output directory.
-    write_output: bool
-        Does it save the data automatically or not?
+        Path to output directory.    
 
     Returns:
     --------
