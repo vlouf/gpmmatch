@@ -127,6 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# VSCODE config
 .vscode/
+
+# PBS jobfiles
+.pbs
+
+# Data directories
 test/
 scripts/statistics/
