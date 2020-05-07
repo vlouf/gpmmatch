@@ -152,7 +152,7 @@ def buffer(gpmfile, date, rid):
                                               refl_name='reflectivity',
                                               fname_prefix=rid,
                                               gr_refl_threshold=GR_THLD,
-                                              gpm_refl_threshold=21,
+                                              gpm_refl_threshold=0,
                                               output_dir=OUTPATH)
     except NoRainError:
         pass
@@ -221,9 +221,9 @@ if __name__ == "__main__":
     RID = args.rid
     GR_THLD = args.grthld
     if args.outdir is None:
-        OUTPATH = os.path.join(os.getcwd(), f'gpm_21_gr_{int(GR_THLD)}dB')
+        OUTPATH = os.path.join(os.getcwd(), f'gr_{int(GR_THLD)}dB')
     else:
-        OUTPATH = os.path.join(args.outdir, f'gpm_21_gr_{int(GR_THLD)}dB')
+        OUTPATH = os.path.join(args.outdir, f'gr_{int(GR_THLD)}dB')
     _mkdir(OUTPATH)
 
     CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
