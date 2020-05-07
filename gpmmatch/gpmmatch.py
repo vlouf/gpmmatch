@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 04/05/2020
+@date: 07/05/2020
     _mkdir
     savedata
     volume_matching
@@ -109,7 +109,7 @@ def volume_matching(gpmfile,
                     fname_prefix=None,
                     gr_beamwidth=1,
                     gr_refl_threshold=21,
-                    gpm_refl_threshold=21,
+                    gpm_refl_threshold=0,
                     output_dir=None,
                     write_output=True):
     '''
@@ -376,7 +376,7 @@ def vmatch_multi_pass(gpmfile,
                       fname_prefix=None,
                       gr_beamwidth=1,
                       gr_refl_threshold=19,
-                      gpm_refl_threshold=21,
+                      gpm_refl_threshold=0,
                       output_dir=None):
     '''
     Multi-pass volume matching with automatic offset computation.
