@@ -69,6 +69,7 @@ def get_offset(matchset):
     pos = ((delta_std < 1) &
            (refl_gr >= 21) &
            (refl_gr <= 36) &
+           (refl_gpm >= 21) &
            (~np.isnan(refl_gpm)) &
            (~np.isnan(refl_gr)))
 
