@@ -3,7 +3,7 @@ Radar calibration monitoring using ground clutter. Processing the Australian
 National archive.
 @creator: Valentin Louf <valentin.louf@bom.gov.au>
 @institution: Monash University and Bureau of Meteorology
-@date: 02/04/2020
+@date: 07/05/2020
     buffer
     check_rid
     extract_zip    
@@ -147,35 +147,6 @@ def remove(flist):
             os.remove(f)
         except FileNotFoundError:
             pass
-    return None
-
-
-def savedata(df, date, path):
-    '''
-    Save the output data into a CSV file compatible with pandas.
-    Parameters:
-    ===========
-    df: pd.Dataframe
-        RCA timeserie to be saved.
-    date:
-        Date of processing.
-    path: str
-        Output directory.
-    '''
-    # datestr = date.strftime('%Y%m%d')
-
-    # path = os.path.join(path, 'rca')
-    # mkdir(path)
-    # path = os.path.join(path, RID)
-    # mkdir(path)
-    # path = os.path.join(path, str(date.year))
-    # mkdir(path)
-
-    # outfilename = os.path.join(path, f'rca.{RID}.{datestr}.csv')
-    # df.to_csv(outfilename)
-    # print(crayons.green(f'Found {len(df)} hits for {datestr}.'))
-    # print(crayons.green(f'Results saved in {outfilename}.'))
-
     return None
 
 
