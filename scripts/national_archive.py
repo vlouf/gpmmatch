@@ -152,7 +152,7 @@ def buffer(gpmfile, date, rid):
                                               refl_name='reflectivity',
                                               fname_prefix=rid,
                                               gr_refl_threshold=GR_THLD,
-                                              gpm_refl_threshold=0,
+                                              gpm_refl_threshold=21,
                                               output_dir=OUTPATH)
     except NoRainError:
         pass
