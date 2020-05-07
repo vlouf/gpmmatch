@@ -1,10 +1,10 @@
 '''
 GADI driver script for the volume matching of ground radar and GPM satellite.
 
-@title: job_gadi
+@title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 06/05/2020
+@date: 07/05/2020
     _mkdir
     remove
     get_radar_archive_file
