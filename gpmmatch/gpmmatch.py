@@ -110,11 +110,11 @@ def volume_matching(gpmfile,
                     grfile,
                     grfile2=None,
                     gr_offset=0,
+                    gr_beamwidth=1,
+                    gr_refl_threshold=10,
                     radar_band='C',
                     refl_name='corrected_reflectivity',
                     fname_prefix=None,
-                    gr_beamwidth=1,
-                    gr_refl_threshold=10,
                     output_dir=None,
                     write_output=True):
     '''
@@ -156,7 +156,7 @@ def volume_matching(gpmfile,
         fname_prefix = 'unknown_radar'
     if output_dir is None:
         output_dir = os.getcwd()
-    
+
     gpmset, radar = data_load_and_checks(gpmfile,
                                          grfile,
                                          grfile2=grfile2,
@@ -382,11 +382,11 @@ def vmatch_multi_pass(gpmfile,
                       grfile,
                       grfile2=None,
                       gr_offset=0,
+                      gr_beamwidth=1,
+                      gr_refl_threshold=10,
                       radar_band='C',
                       refl_name='corrected_reflectivity',
                       fname_prefix=None,
-                      gr_beamwidth=1,
-                      gr_refl_threshold=10,
                       output_dir=None):
     '''
     Multi-pass volume matching with automatic offset computation.
