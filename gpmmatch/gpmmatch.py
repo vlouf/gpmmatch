@@ -65,11 +65,13 @@ def get_offset(matchset):
     std_refl_gpm = matchset.std_refl_gpm.values
     std_refl_gr = matchset.std_refl_gr.values
 
-    delta_std = np.abs(std_refl_gpm - std_refl_gr)
-    pos = ((refl_gr >= 21) &
-           (refl_gr <= 36) &        
+    pos = ((std_refl_gpm > 1) & (std_refl_gpm < 5) &
+           (std_refl_gr > 0) & (std_refl_gr < 5) &
+           (np.abs(refl_gpm - refl_gr) < 15) &
            (~np.isnan(refl_gpm)) &
-           (~np.isnan(refl_gr)))
+           (~np.isnan(refl_gr)) &
+           (refl_gr >= 21) &
+           (refl_gr <= 36))
 
     offset = np.mean(refl_gr[pos] - refl_gpm[pos])
     return offset
