@@ -67,7 +67,7 @@ class PublishCommand(Command):
 # Where the magic happens:
 setup(
     name=NAME,
-    version='0.5.0',
+    version='0.9.0',
     description=DESCRIPTION,
     long_description=long_description,
     author=AUTHOR,
@@ -79,12 +79,12 @@ setup(
     license='ISC',
     classifiers=[
         # Trove classifiers
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Topic :: Scientific/Engineering :: Atmospheric Science',
     ],
     # $ setup.py publish support.
     cmdclass={
