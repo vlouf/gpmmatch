@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 30/04/2020
+@date: 13/05/2020
 
     NoPrecipitationError
     get_gpm_orbit
@@ -15,6 +15,7 @@ volume_matching.
 '''
 import re
 import datetime
+import warnings
 
 import h5py
 import pyart
@@ -88,7 +89,7 @@ def get_gpm_orbit(gpmfile):
     return int(orbit)
 
 
-def read_GPM(infile, refl_min_thld=17):
+def read_GPM(infile, refl_min_thld=0):
     '''
     Read GPM data and organize them into a Dataset.
 
@@ -97,13 +98,15 @@ def read_GPM(infile, refl_min_thld=17):
     gpmfile: str
         GPM data file.
     refl_min_thld: float
-        Minimum threshold applied to GPM reflectivity.
+        Minimum threshold applied to GPM reflectivity. 
 
     Returns:
     --------
     dset: xr.Dataset
         GPM dataset.
     '''
+    if refl_min_thld != 0:
+        warnings.warn('Tests have shown that no threshold should be applied to GPM reflectivity!', UserWarning)
     data = dict()
     date = dict()
     with h5py.File(infile, 'r') as hid:
@@ -325,8 +328,7 @@ def data_load_and_checks(gpmfile,
                          grfile,
                          grfile2=None,
                          refl_name=None,
-                         radar_band='C',
-                         gpm_refl_threshold=17):
+                         radar_band='C'):
     '''
     Load GPM and Ground radar files and perform some initial checks:
     domains intersect, precipitation, time difference.
@@ -338,15 +340,13 @@ def data_load_and_checks(gpmfile,
     grfile: str
         Ground radar input file.
     grfile2: str
-        Second ground radar input file to compute grid displacement and
-        advection.
+        (Optional) Second ground radar input file to compute grid displacement
+        and advection.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
     radar_band: str
         Ground radar frequency band for reflectivity conversion. S, C, and X
         supported.
-    gpm_refl_threshold: float
-        Minimum threshold applied to GPM reflectivity.
 
     Returns:
     --------
@@ -360,7 +360,7 @@ def data_load_and_checks(gpmfile,
     if grfile2 is None:
         gpmtime0 = 0
 
-    gpmset = read_GPM(gpmfile, gpm_refl_threshold)
+    gpmset = read_GPM(gpmfile)
     grlon, grlat, gralt, rmin, rmax = get_ground_radar_attributes(grfile)
 
     # Reproject satellite coordinates onto ground radar
@@ -405,7 +405,7 @@ def data_load_and_checks(gpmfile,
     gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
     gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
     gpmset = gpmset.merge({'overpass_time': (gpmtime0)})
-    
+
     # Attributes
     gpmset.overpass_time.attrs['description'] = 'GPM overpass time at the closest from ground radar site'
     gpmset.x.attrs['units'] = 'm'
