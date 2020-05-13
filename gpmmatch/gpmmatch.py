@@ -156,8 +156,7 @@ def volume_matching(gpmfile,
         fname_prefix = 'unknown_radar'
     if output_dir is None:
         output_dir = os.getcwd()
-
-    bwr = gr_beamwidth
+    
     gpmset, radar = data_load_and_checks(gpmfile,
                                          grfile,
                                          grfile2=grfile2,
@@ -209,7 +208,7 @@ def volume_matching(gpmfile,
     reflectivity_gpm_grband = np.ma.masked_invalid(gpmset.reflectivity_grband.values[position_precip_domain])
 
     volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth) / 2) ** 2  # km3
-    volgr = 1e-9 * np.pi * dr * (R * np.pi / 180 * bwr / 2) ** 2  # km3
+    volgr = 1e-9 * np.pi * dr * (R * np.pi / 180 * gr_beamwidth / 2) ** 2  # km3
 
     # Compute Path-integrated reflectivities
     pir_gr = 10 * np.log10(np.cumsum((10 ** (ground_radar_reflectivity / 10)).filled(0), axis=1) * dr)
@@ -238,7 +237,7 @@ def volume_matching(gpmfile,
     delta_t = np.zeros((nprof, ntilt)) + np.NaN  # Timedelta of sample
 
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
-        epos = (elev_sat[ii, :] >= elev_gr[jj] - bwr / 2) & (elev_sat[ii, :] <= elev_gr[jj] + bwr / 2)
+        epos = (elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) & (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2)
         x[ii, jj] = np.mean(xsat[ii, epos])
         y[ii, jj] = np.mean(ysat[ii, epos])
         z[ii, jj] = np.mean(zsat[ii, epos])
