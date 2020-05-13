@@ -114,9 +114,7 @@ def volume_matching(gpmfile,
                     gr_refl_threshold=10,
                     radar_band='C',
                     refl_name='corrected_reflectivity',
-                    fname_prefix=None,
-                    output_dir=None,
-                    write_output=True):
+                    fname_prefix=None):
     '''
     Performs the volume matching of GPM satellite data to ground based radar.
 
@@ -130,20 +128,16 @@ def volume_matching(gpmfile,
         Second ground radar input file to compute the advection.
     gr_offset: float
         Offset to add to the reflectivity of the ground radar data.
+    gr_beamwidth: float
+        Ground radar 3dB-beamwidth.
+    gr_refl_thresold: float
+        Minimum reflectivity threshold on ground radar data.
     radar_band: str
         Ground radar frequency band.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
-    gr_beamwidth: float
-        Ground radar 3dB-beamwidth.
-    gr_refl_thresold: float
-        Minimum reflectivity threshold on ground radar data.
-    output_dir: str
-        Path to output directory.
-    write_output: bool
-        Does it save the data automatically or not?
 
     Returns:
     --------
@@ -154,8 +148,6 @@ def volume_matching(gpmfile,
         warnings.warn('Tests have shown that the ideal ground radar reflectivity threshold is about 10 dB.', UserWarning)
     if fname_prefix is None:
         fname_prefix = 'unknown_radar'
-    if output_dir is None:
-        output_dir = os.getcwd()
 
     gpmset, radar = data_load_and_checks(gpmfile,
                                          grfile,
@@ -371,9 +363,6 @@ def volume_matching(gpmfile,
         history = f"Created by {matchset.attrs['creator_name']} at {matchset.attrs['date_created']} using Py-ART."
     matchset.attrs['history'] = history
 
-    if write_output:
-        savedata(matchset, output_dir, outfilename)
-
     del radar, gpmset
     return matchset
 
@@ -401,16 +390,16 @@ def vmatch_multi_pass(gpmfile,
         Second ground radar input file to compute the advection.
     gr_offset: float
         Offset to add to the reflectivity of the ground radar data.
+    gr_beamwidth: float
+        Ground radar 3dB-beamwidth.
+    gr_refl_thresold: float
+        Minimum reflectivity threshold on ground radar data.
     radar_band: str
         Ground radar frequency band.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
-    gr_beamwidth: float
-        Ground radar 3dB-beamwidth.
-    gr_refl_thresold: float
-        Minimum reflectivity threshold on ground radar data.
     output_dir: str
         Path to output directory.
     '''
@@ -433,8 +422,7 @@ def vmatch_multi_pass(gpmfile,
                                refl_name=refl_name,
                                fname_prefix=fname_prefix,
                                gr_beamwidth=gr_beamwidth,
-                               gr_refl_threshold=gr_refl_threshold,
-                               write_output=False)
+                               gr_refl_threshold=gr_refl_threshold)
     pass_offset = matchset.attrs['offset_found']
     offset_keeping_track = [pass_offset]
     final_offset_keeping_track = [matchset.attrs['final_offset']]
@@ -459,8 +447,7 @@ def vmatch_multi_pass(gpmfile,
                                        refl_name=refl_name,
                                        fname_prefix=fname_prefix,
                                        gr_beamwidth=gr_beamwidth,
-                                       gr_refl_threshold=gr_refl_threshold,
-                                       write_output=False)
+                                       gr_refl_threshold=gr_refl_threshold)
         pass_offset = matchset.attrs['offset_found']
         offset_keeping_track.append(pass_offset)
         final_offset_keeping_track.append(matchset.attrs['final_offset'])
