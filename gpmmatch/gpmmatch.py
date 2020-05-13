@@ -114,7 +114,6 @@ def volume_matching(gpmfile,
                     fname_prefix=None,
                     gr_beamwidth=1,
                     gr_refl_threshold=21,
-                    gpm_refl_threshold=0,
                     output_dir=None,
                     write_output=True):
     '''
@@ -140,8 +139,6 @@ def volume_matching(gpmfile,
         Ground radar 3dB-beamwidth.
     gr_refl_thresold: float
         Minimum reflectivity threshold on ground radar data.
-    gpm_refl_threshold: float
-        Minimum reflectivity threshold on GPM data.
     output_dir: str
         Path to output directory.
     write_output: bool
@@ -161,7 +158,6 @@ def volume_matching(gpmfile,
                                          grfile,
                                          grfile2=grfile2,
                                          refl_name=refl_name,
-                                         gpm_refl_threshold=gpm_refl_threshold,
                                          radar_band=radar_band)
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
@@ -273,7 +269,7 @@ def volume_matching(gpmfile,
             continue
         if np.all(np.isnan(refl_gr_raw.filled(np.NaN))):
             continue
-        if np.sum(refl_gpm >= gpm_refl_threshold) / np.sum(~np.isnan(refl_gpm)) < 0.7:
+        if np.sum(refl_gpm > 0) / np.sum(~np.isnan(refl_gpm)) < 0.7:
             # fmin parameter (Fig 5 Rob's paper).
             continue
         if np.sum(refl_gr_raw >= gr_refl_threshold) / np.sum(~np.isnan(refl_gr_raw)) < 0.7:
@@ -388,7 +384,6 @@ def vmatch_multi_pass(gpmfile,
                       fname_prefix=None,
                       gr_beamwidth=1,
                       gr_refl_threshold=19,
-                      gpm_refl_threshold=0,
                       output_dir=None):
     '''
     Multi-pass volume matching with automatic offset computation.
@@ -413,8 +408,6 @@ def vmatch_multi_pass(gpmfile,
         Ground radar 3dB-beamwidth.
     gr_refl_thresold: float
         Minimum reflectivity threshold on ground radar data.
-    gpm_refl_threshold: float
-        Minimum reflectivity threshold on GPM data.
     output_dir: str
         Path to output directory.
     '''
@@ -438,7 +431,6 @@ def vmatch_multi_pass(gpmfile,
                                fname_prefix=fname_prefix,
                                gr_beamwidth=gr_beamwidth,
                                gr_refl_threshold=gr_refl_threshold,
-                               gpm_refl_threshold=gpm_refl_threshold,
                                write_output=False)
     pass_offset = matchset.attrs['offset_found']
     offset_keeping_track = [pass_offset]
@@ -465,7 +457,6 @@ def vmatch_multi_pass(gpmfile,
                                        fname_prefix=fname_prefix,
                                        gr_beamwidth=gr_beamwidth,
                                        gr_refl_threshold=gr_refl_threshold,
-                                       gpm_refl_threshold=gpm_refl_threshold,
                                        write_output=False)
         pass_offset = matchset.attrs['offset_found']
         offset_keeping_track.append(pass_offset)
