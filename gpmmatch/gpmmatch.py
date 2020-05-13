@@ -73,7 +73,11 @@ def get_offset(matchset):
            (refl_gr >= 21) &
            (refl_gr <= 36))
 
-    offset = np.mean(refl_gr[pos] - refl_gpm[pos])
+    if np.sum(pos) < 10:
+        offset = np.NaN
+    else:
+        offset = np.mean(refl_gr[pos] - refl_gpm[pos])
+
     return offset
 
 
