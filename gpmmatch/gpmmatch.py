@@ -16,6 +16,7 @@ latest version of TRMM data.
 import os
 import uuid
 import datetime
+import warnings
 import itertools
 
 import cftime
@@ -113,7 +114,7 @@ def volume_matching(gpmfile,
                     refl_name='corrected_reflectivity',
                     fname_prefix=None,
                     gr_beamwidth=1,
-                    gr_refl_threshold=21,
+                    gr_refl_threshold=10,
                     output_dir=None,
                     write_output=True):
     '''
@@ -149,10 +150,13 @@ def volume_matching(gpmfile,
     matchset: xarray.Dataset
         Dataset containing the matched GPM and ground radar data.
     '''
+    if gr_refl_threshold > 10:
+        warnings.warn('Tests have shown that the ideal ground radar reflectivity threshold is about 10 dB.', UserWarning)
     if fname_prefix is None:
         fname_prefix = 'unknown_radar'
     if output_dir is None:
         output_dir = os.getcwd()
+
     bwr = gr_beamwidth
     gpmset, radar = data_load_and_checks(gpmfile,
                                          grfile,
@@ -383,7 +387,7 @@ def vmatch_multi_pass(gpmfile,
                       refl_name='corrected_reflectivity',
                       fname_prefix=None,
                       gr_beamwidth=1,
-                      gr_refl_threshold=19,
+                      gr_refl_threshold=10,
                       output_dir=None):
     '''
     Multi-pass volume matching with automatic offset computation.
