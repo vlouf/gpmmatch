@@ -6,8 +6,9 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 07/05/2020
+@date: 13/05/2020
     _mkdir
+    get_offset
     savedata
     volume_matching
     vmatch_multi_pass
@@ -99,7 +100,7 @@ def savedata(matchset, output_dir, outfilename):
     if not os.path.exists(outfile):
         matchset.to_netcdf(outfile, encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
     else:
-        print('Output file already exists.')
+        print(f'Output file {outfile} already exists.')
 
     return None
 
@@ -129,6 +130,8 @@ def volume_matching(gpmfile,
         Second ground radar input file to compute the advection.
     gr_offset: float
         Offset to add to the reflectivity of the ground radar data.
+    radar_band: str
+        Ground radar frequency band.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
@@ -357,12 +360,17 @@ def volume_matching(gpmfile,
     matchset.attrs['date_created'] = datetime.datetime.now().isoformat()
     matchset.attrs['uuid'] = str(uuid.uuid4())
     matchset.attrs['institution'] = 'Bureau of Meteorology'
-    matchset.attrs['references'] = 'doi:10.1175/JTECH-D-18-0007.1'
+    matchset.attrs['references'] = 'doi:10.1175/JTECH-D-18-0007.1 ; doi:10.1175/JTECH-D-17-0128.1'
+    matchset.attrs['disclaimer'] = 'If you are using this data/technique for a scientific publication, please cite the papers given in references.'
     matchset.attrs['naming_authority'] = 'au.org.nci'
     matchset.attrs['summary'] = 'GPM volume matching technique.'
     matchset.attrs['field_names'] = ", ".join(sorted([k for k, v in matchset.items()]))
-    matchset.attrs['history'] = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
     matchset.attrs['filename'] = outfilename
+    try:
+        history = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
+    except AttributeError:  # Windows OS.
+        history = f"Created by {matchset.attrs['creator_name']} at {matchset.attrs['date_created']} using Py-ART."
+    matchset.attrs['history'] = history
 
     if write_output:
         savedata(matchset, output_dir, outfilename)
@@ -395,6 +403,8 @@ def vmatch_multi_pass(gpmfile,
         Second ground radar input file to compute the advection.
     gr_offset: float
         Offset to add to the reflectivity of the ground radar data.
+    radar_band: str
+        Ground radar frequency band.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
