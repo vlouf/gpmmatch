@@ -449,11 +449,9 @@ def vmatch_multi_pass(gpmfile,
                                        gr_beamwidth=gr_beamwidth,
                                        gr_refl_threshold=gr_refl_threshold)
         pass_offset = matchset.attrs['offset_found']
-        offset_keeping_track.append(pass_offset)
-        final_offset_keeping_track.append(matchset.attrs['final_offset'])
-
         if np.isnan(pass_offset):
             raise ValueError('Pass offset NAN.')
+
         if np.abs(final_offset_keeping_track[-1]) - np.abs(final_offset_keeping_track[-2]) < 0:
             # Solution converged already. Using previous iteration as final result.
             counter -= 1
@@ -463,6 +461,9 @@ def vmatch_multi_pass(gpmfile,
         if counter == 6:
             print(f'Solution did not converge for {gpmfile}.')
             break
+
+        offset_keeping_track.append(pass_offset)
+        final_offset_keeping_track.append(matchset.attrs['final_offset'])
 
     matchset.attrs['iteration_number'] = counter
     matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
