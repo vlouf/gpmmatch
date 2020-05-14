@@ -80,7 +80,8 @@ def get_offset(matchset):
 
     x1 = refl_gpm[pos]
     x2 = refl_gr[pos]
-    offstd = np.std(x2 - x1)
+    deltax = (x2 - x1)
+    offstd = deltax.std()
     if len(x1) < 20:
         offset = np.NaN
     elif len(x1) < 50 and offstd > 2:
@@ -90,7 +91,6 @@ def get_offset(matchset):
     elif np.sum(r[pos].flatten() < 150e3) < 20:
         offset = np.NaN
     else:
-        deltax = (x2 - x1)[pos]
         m, _ = mode(np.round(deltax * 2) / 2)
         npos = ((deltax < m[0] + deltax.std()) & (deltax > m[0] - deltax.std()))
         offset = deltax[npos].mean()
