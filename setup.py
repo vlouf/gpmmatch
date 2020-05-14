@@ -16,7 +16,7 @@ AUTHOR = 'Valentin Louf'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "arm_pyart", "numpy", "netCDF4", "h5py", "pyproj", 'xarray', 'pandas',
+    "arm_pyart", "numpy", "netCDF4", "h5py", "pyproj", 'xarray', 'pandas', 'scipy'
 ]
 
 # The rest you shouldn't have to touch too much :)

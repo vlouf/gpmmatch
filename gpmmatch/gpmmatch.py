@@ -24,6 +24,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from scipy.stats import mode
+
 from .io import data_load_and_checks
 from .default import get_metadata
 
