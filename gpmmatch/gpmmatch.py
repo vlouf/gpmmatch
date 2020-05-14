@@ -86,7 +86,7 @@ def get_offset(matchset):
     elif len(x1) < 50 and offstd > 2:
         offset = np.NaN
     elif offstd > 4:
-        offset = np.NaN    
+        offset = np.NaN
     elif np.sum(r[pos].flatten() < 150e3) < 20:
         offset = np.NaN
     else:
@@ -439,6 +439,9 @@ def vmatch_multi_pass(gpmfile,
                                gr_beamwidth=gr_beamwidth,
                                gr_refl_threshold=gr_refl_threshold)
     pass_offset = matchset.attrs['offset_found']
+    if np.isnan(pass_offset):
+            raise ValueError('Pass offset NAN.')
+
     offset_keeping_track = [pass_offset]
     final_offset_keeping_track = [matchset.attrs['final_offset']]
 
