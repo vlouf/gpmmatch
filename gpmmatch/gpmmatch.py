@@ -78,9 +78,8 @@ def get_offset(matchset):
            (refl_gr >= 21) &
            (refl_gr <= 36))
 
-    x1 = pd.Series(refl_gpm[pos], name="GPM")
-    x2 = pd.Series(refl_gr[pos], name="Ground Radar")
-    
+    x1 = refl_gpm[pos]
+    x2 = refl_gr[pos]
     offstd = np.std(x1 - x2)
     if len(x1) < 20:
         offset = np.NaN
