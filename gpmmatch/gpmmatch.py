@@ -68,6 +68,7 @@ def get_offset(matchset):
     refl_gr = matchset.refl_gr_weigthed.values
     std_refl_gpm = matchset.std_refl_gpm.values
     std_refl_gr = matchset.std_refl_gr.values
+    r = matchset.r.values
 
     pos = ((std_refl_gpm > 0.2) & (std_refl_gpm < 5) &
            (std_refl_gr > 0) & (std_refl_gr < 5) &
@@ -77,10 +78,23 @@ def get_offset(matchset):
            (refl_gr >= 21) &
            (refl_gr <= 36))
 
-    if np.sum(pos) < 10:
+    x1 = pd.Series(refl_gpm[pos], name="GPM")
+    x2 = pd.Series(refl_gr[pos], name="Ground Radar")
+    
+    offstd = np.std(x1 - x2)
+    if len(x1) < 20:
+        offset = np.NaN
+    elif len(x1) < 50 and offstd > 2:
+        offset = np.NaN
+    elif offstd > 4:
+        offset = np.NaN    
+    elif np.sum(r[pos].flatten() < 150e3) < 20:
         offset = np.NaN
     else:
-        offset = np.mean(refl_gr[pos] - refl_gpm[pos])
+        x = (refl_gr - refl_gpm)[pos]
+        m, _ = mode(np.round(x * 2) / 2)
+        npos = ((x < m[0] + x.std()) & (x > m[0] - x.std()))
+        offset = x[npos].mean()
 
     return offset
 
