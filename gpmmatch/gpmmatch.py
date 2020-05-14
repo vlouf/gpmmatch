@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 13/05/2020
+@date: 14/05/2020
     _mkdir
     get_offset
     savedata
@@ -67,7 +67,7 @@ def get_offset(matchset):
     std_refl_gpm = matchset.std_refl_gpm.values
     std_refl_gr = matchset.std_refl_gr.values
 
-    pos = ((std_refl_gpm > 1) & (std_refl_gpm < 5) &
+    pos = ((std_refl_gpm > 0.2) & (std_refl_gpm < 5) &
            (std_refl_gr > 0) & (std_refl_gr < 5) &
            (np.abs(refl_gpm - refl_gr) < 15) &
            (~np.isnan(refl_gpm)) &
