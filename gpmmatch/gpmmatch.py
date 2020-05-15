@@ -440,7 +440,7 @@ def vmatch_multi_pass(gpmfile,
                                gr_refl_threshold=gr_refl_threshold)
     pass_offset = matchset.attrs['offset_found']
     if np.isnan(pass_offset):
-            raise ValueError('Pass offset NAN.')
+        raise ValueError('Pass offset NAN.')
 
     offset_keeping_track = [pass_offset]
     final_offset_keeping_track = [matchset.attrs['final_offset']]
@@ -468,7 +468,8 @@ def vmatch_multi_pass(gpmfile,
                                        gr_refl_threshold=gr_refl_threshold)
         pass_offset = matchset.attrs['offset_found']
         if np.isnan(pass_offset):
-            raise ValueError('Pass offset NAN.')
+            counter -= 1
+            break
 
         if np.abs(final_offset_keeping_track[-1]) - np.abs(final_offset_keeping_track[-2]) < 0:
             # Solution converged already. Using previous iteration as final result.
