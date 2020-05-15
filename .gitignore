@@ -133,7 +133,10 @@ dmypy.json
 
 # PBS jobfiles
 .pbs
+*.pbs.*
+*.png
+ scripts/*ipynb
 
 # Data directories
 test/
-scripts/statistics/
+scripts/*/
