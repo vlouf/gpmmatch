@@ -481,7 +481,7 @@ def vmatch_multi_pass(gpmfile,
             counter -= 1
             break
 
-        if np.abs(pass_offset) > np.abs(final_offset_keeping_track[-1]):
+        if np.abs(pass_offset) > np.abs(offset_keeping_track[-1]):
             # Solution converged already. Using previous iteration as final result.
             counter -= 1
             break
