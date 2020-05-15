@@ -148,7 +148,7 @@ def buffer(gpmfile, date, rid):
     try:
         matchset = gpmmatch.vmatch_multi_pass(gpmfile,
                                               grfile,
-                                              radar_band='C',
+                                              radar_band='S',
                                               refl_name='reflectivity',
                                               fname_prefix=rid,
                                               gr_refl_threshold=GR_THLD,
