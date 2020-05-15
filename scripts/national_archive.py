@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 13/05/2020
+@date: 15/05/2020
     _mkdir
     remove
     get_radar_archive_file
@@ -146,13 +146,13 @@ def buffer(gpmfile, date, rid):
         return None
 
     try:
-        matchset = gpmmatch.vmatch_multi_pass(gpmfile,
-                                              grfile,
-                                              radar_band='S',
-                                              refl_name='reflectivity',
-                                              fname_prefix=rid,
-                                              gr_refl_threshold=GR_THLD,
-                                              output_dir=OUTPATH)
+        _ = gpmmatch.vmatch_multi_pass(gpmfile,
+                                       grfile,
+                                       radar_band='S',
+                                       refl_name='reflectivity',
+                                       fname_prefix=rid,
+                                       gr_refl_threshold=GR_THLD,
+                                       output_dir=OUTPATH)
     except NoRainError:
         pass
     except Exception:
@@ -182,7 +182,7 @@ def main():
             argslist.append((g, d, RID))
 
         bag = db.from_sequence(argslist).starmap(buffer)
-        rslt = bag.compute()
+        _ = bag.compute()
         break
 
 
@@ -220,9 +220,9 @@ if __name__ == "__main__":
     RID = args.rid
     GR_THLD = args.grthld
     if args.outdir is None:
-        OUTPATH = os.path.join(os.getcwd(), f'gr_{int(GR_THLD)}dB')
+        OUTPATH = os.path.join(os.getcwd(), f'{RID}')
     else:
-        OUTPATH = os.path.join(args.outdir, f'gr_{int(GR_THLD)}dB')
+        OUTPATH = os.path.join(args.outdir, f'{RID}')
     _mkdir(OUTPATH)
 
     CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
