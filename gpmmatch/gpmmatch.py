@@ -81,6 +81,7 @@ def get_offset(matchset):
     x1 = refl_gpm[pos]
     x2 = refl_gr[pos]
     deltax = (x2 - x1)
+    deltax = deltax[~np.isnan(deltax)]
     # offstd = deltax.std()
     # if len(x1) < 20:
     #     offset = np.NaN
@@ -91,9 +92,9 @@ def get_offset(matchset):
     # elif np.sum(r[pos].flatten() < 150e3) < 20:
     #     offset = np.NaN
     # else:
-    m, _ = mode(np.round(deltax * 2) / 2)
+    m, _ = mode(np.round(deltax * 2) / 2, nan_policy='omit')
     npos = ((deltax < m[0] + deltax.std()) & (deltax > m[0] - deltax.std()))
-    offset = deltax[npos].mean()
+    offset = deltax[npos].mean()    
 
     return offset
 
@@ -441,6 +442,7 @@ def vmatch_multi_pass(gpmfile,
                                gr_beamwidth=gr_beamwidth,
                                gr_refl_threshold=gr_refl_threshold)
     pass_offset = matchset.attrs['offset_found']
+    gr_offset = pass_offset
     if np.isnan(pass_offset):
         raise ValueError('Pass offset NAN.')
 
@@ -457,8 +459,7 @@ def vmatch_multi_pass(gpmfile,
     offset_thld = 0.5
     while np.abs(pass_offset) > offset_thld:
         offset_thld = 1
-        counter += 1
-        gr_offset = matchset.attrs['final_offset']
+        counter += 1        
         new_matchset = volume_matching(gpmfile,
                                        grfile,
                                        grfile2=grfile2,
@@ -468,13 +469,14 @@ def vmatch_multi_pass(gpmfile,
                                        fname_prefix=fname_prefix,
                                        gr_beamwidth=gr_beamwidth,
                                        gr_refl_threshold=gr_refl_threshold)
-
+                
         # Save intermediary file.
-        outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
-        savedata(matchset, output_dir_inter_pass, outfilename)
+        outfilename = new_matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
+        savedata(new_matchset, output_dir_inter_pass, outfilename)
 
         # Check offset found.
-        pass_offset = matchset.attrs['offset_found']
+        gr_offset = new_matchset.attrs['final_offset']
+        pass_offset = new_matchset.attrs['offset_found']
         if np.isnan(pass_offset):
             counter -= 1
             break
@@ -490,7 +492,7 @@ def vmatch_multi_pass(gpmfile,
             break
 
         offset_keeping_track.append(pass_offset)
-        final_offset_keeping_track.append(matchset.attrs['final_offset'])
+        final_offset_keeping_track.append(gr_offset)
 
     matchset.attrs['iteration_number'] = counter
     matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
