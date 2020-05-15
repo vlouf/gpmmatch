@@ -425,8 +425,10 @@ def vmatch_multi_pass(gpmfile,
 
     output_dir_first_pass = os.path.join(output_dir, 'first_pass')
     output_dir_final_pass = os.path.join(output_dir, 'final_pass')
+    output_dir_inter_pass = os.path.join(output_dir, 'inter_pass')
     _mkdir(output_dir_first_pass)
     _mkdir(output_dir_final_pass)
+    _mkdir(output_dir_inter_pass)
 
     # First pass
     matchset = volume_matching(gpmfile,
@@ -466,6 +468,12 @@ def vmatch_multi_pass(gpmfile,
                                        fname_prefix=fname_prefix,
                                        gr_beamwidth=gr_beamwidth,
                                        gr_refl_threshold=gr_refl_threshold)
+
+        # Save intermediary file.
+        outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
+        savedata(matchset, output_dir_inter_pass, outfilename)
+
+        # Check offset found.
         pass_offset = matchset.attrs['offset_found']
         if np.isnan(pass_offset):
             counter -= 1
