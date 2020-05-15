@@ -132,7 +132,7 @@ dmypy.json
 .vscode/
 
 # PBS jobfiles
-.pbs
+*.pbs
 *.pbs.*
 *.png
  scripts/*ipynb
