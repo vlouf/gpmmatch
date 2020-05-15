@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 14/05/2020
+@date: 15/05/2020
     _mkdir
     get_offset
     savedata
@@ -84,10 +84,10 @@ def get_offset(matchset):
     offstd = deltax.std()
     if len(x1) < 20:
         offset = np.NaN
-    elif len(x1) < 50 and offstd > 2:
-        offset = np.NaN
-    elif offstd > 4:
-        offset = np.NaN
+    # elif len(x1) < 50 and offstd > 2:
+    #     offset = np.NaN
+    # elif offstd > 4:
+    #     offset = np.NaN
     elif np.sum(r[pos].flatten() < 150e3) < 20:
         offset = np.NaN
     else:
