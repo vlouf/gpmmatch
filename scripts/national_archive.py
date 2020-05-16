@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 15/05/2020
+@date: 16/05/2020
     _mkdir
     remove
     get_radar_archive_file
@@ -33,8 +33,7 @@ from gpmmatch import NoRainError
 
 def _mkdir(dir):
     """
-    Make directory. Might seem redundant but you might have concurrency issue
-    when dealing with multiprocessing.
+    Make directory.
     """
     if os.path.exists(dir):
         return None
