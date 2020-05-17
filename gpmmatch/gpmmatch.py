@@ -50,7 +50,7 @@ def _mkdir(dir):
     return None
 
 
-def get_offset(matchset):
+def get_offset(matchset, loose=False):
     '''
     Compute the Offset between GR and GPM.
 
@@ -70,13 +70,19 @@ def get_offset(matchset):
     std_refl_gr = matchset.std_refl_gr.values
     r = matchset.r.values
 
-    pos = ((std_refl_gpm > 0.2) & (std_refl_gpm < 5) &
-           (std_refl_gr > 0) & (std_refl_gr < 5) &
-           (np.abs(refl_gpm - refl_gr) < 15) &
-           (~np.isnan(refl_gpm)) &
-           (~np.isnan(refl_gr)) &
-           (refl_gr >= 21) &
-           (refl_gr <= 36))
+    if loose:
+        pos = ((~np.isnan(refl_gpm)) &
+               (~np.isnan(refl_gr)) &
+               (refl_gr >= 21) &
+               (refl_gr <= 36))
+    else:
+        pos = ((std_refl_gpm > 0.2) & (std_refl_gpm < 5) &
+               (std_refl_gr > 0) & (std_refl_gr < 5) &
+               (np.abs(refl_gpm - refl_gr) < 15) &
+               (~np.isnan(refl_gpm)) &
+               (~np.isnan(refl_gr)) &
+               (refl_gr >= 21) &
+               (refl_gr <= 36))
 
     x1 = refl_gpm[pos]
     x2 = refl_gr[pos]
@@ -94,7 +100,7 @@ def get_offset(matchset):
     # else:
     m, _ = mode(np.round(deltax * 2) / 2, nan_policy='omit')
     npos = ((deltax < m[0] + deltax.std()) & (deltax > m[0] - deltax.std()))
-    offset = deltax[npos].mean()    
+    offset = deltax[npos].mean()
 
     return offset
 
@@ -459,7 +465,7 @@ def vmatch_multi_pass(gpmfile,
     offset_thld = 0.5
     while np.abs(pass_offset) > offset_thld:
         offset_thld = 1
-        counter += 1        
+        counter += 1
         new_matchset = volume_matching(gpmfile,
                                        grfile,
                                        grfile2=grfile2,
@@ -469,7 +475,7 @@ def vmatch_multi_pass(gpmfile,
                                        fname_prefix=fname_prefix,
                                        gr_beamwidth=gr_beamwidth,
                                        gr_refl_threshold=gr_refl_threshold)
-                
+
         # Save intermediary file.
         outfilename = new_matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
         savedata(new_matchset, output_dir_inter_pass, outfilename)
