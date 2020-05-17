@@ -419,6 +419,16 @@ def vmatch_multi_pass(gpmfile,
     output_dir: str
         Path to output directory.
     '''
+    def _save(dset, output_directory):
+        '''
+        Generate multipass metadata and file name.
+        '''
+        dset.attrs['iteration_number'] = counter
+        matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
+        outfilename = dset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
+        savedata(dset, output_directory, outfilename)
+        return None
+
     counter = 0
     offset_thld = 0.5
     if fname_prefix is None:
@@ -450,14 +460,10 @@ def vmatch_multi_pass(gpmfile,
         raise ValueError('Pass offset NAN.')
 
     offset_keeping_track = [pass_offset]
-    final_offset_keeping_track = [matchset.attrs['final_offset']]
+    final_offset_keeping_track = [matchset.attrs['final_offset']]    
+    _save(matchset, output_dir_first_pass)
 
-    matchset.attrs['iteration_number'] = counter
-    matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
-    outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
-    savedata(matchset, output_dir_first_pass, outfilename)
-
-    # Multiple pass as long as the difference is more than 1dB or counter is 6    
+    # Multiple pass as long as the difference is more than 1dB or counter is 6
     while (np.abs(pass_offset) > offset_thld) or (counter < 6):
         offset_thld = 1
         counter += 1
@@ -471,9 +477,8 @@ def vmatch_multi_pass(gpmfile,
                                        gr_beamwidth=gr_beamwidth,
                                        gr_refl_threshold=gr_refl_threshold)
 
-        # Save intermediary file.
-        outfilename = new_matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
-        savedata(new_matchset, output_dir_inter_pass, outfilename)
+        # Save intermediary file.        
+        _save(new_matchset, output_dir_inter_pass)
 
         # Check offset found.
         gr_offset = new_matchset.attrs['final_offset']
@@ -487,9 +492,7 @@ def vmatch_multi_pass(gpmfile,
         offset_keeping_track.append(pass_offset)
         final_offset_keeping_track.append(gr_offset)
 
-    matchset.attrs['iteration_number'] = counter
-    matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
-    outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
-    savedata(matchset, output_dir_final_pass, outfilename)
+    # Save final iteration.
+    _save(matchset, output_dir_final_pass)
 
     return None
