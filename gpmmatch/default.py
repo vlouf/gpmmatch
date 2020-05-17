@@ -5,9 +5,31 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 24/02/2020
-@date: 05/05/2020
+@date: 17/05/2020
+
+    load_national_archive_info
     get_metadata
 '''
+import os
+
+import pandas as pd
+
+
+def load_national_archive_info():
+    '''
+    Load Australian national archive informations as a Dataframe.
+
+    Returns:
+    ========
+    df: pandas.Dataframe
+        Dataframe containing general information about the Australian radar
+        Network (lat/lon, site name, frequency band and bandwith).
+    '''
+    location = os.path.dirname(os.path.realpath(__file__))
+    myfile = os.path.join(location, 'data', 'radar_site_list.csv')
+    df = pd.read_csv(myfile).drop_duplicates('id', keep='last').reset_index()
+
+    return df
 
 
 def get_metadata():
