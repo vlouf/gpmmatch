@@ -419,11 +419,14 @@ def vmatch_multi_pass(gpmfile,
     output_dir: str
         Path to output directory.
     '''
+    counter = 0
+    offset_thld = 0.5
     if fname_prefix is None:
         fname_prefix = 'unknown_radar'
     if output_dir is None:
         output_dir = os.getcwd()
 
+    # Generate output directories.
     output_dir_first_pass = os.path.join(output_dir, 'first_pass')
     output_dir_final_pass = os.path.join(output_dir, 'final_pass')
     output_dir_inter_pass = os.path.join(output_dir, 'inter_pass')
@@ -449,15 +452,13 @@ def vmatch_multi_pass(gpmfile,
     offset_keeping_track = [pass_offset]
     final_offset_keeping_track = [matchset.attrs['final_offset']]
 
-    matchset.attrs['iteration_number'] = 0
+    matchset.attrs['iteration_number'] = counter
     matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
-    outfilename = matchset.attrs['filename'].replace('.nc', f'.pass0.nc')
+    outfilename = matchset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
     savedata(matchset, output_dir_first_pass, outfilename)
 
-    # Multiple pass as long as the difference is more than 1dB or counter is 6
-    counter = 0
-    offset_thld = 0.5
-    while np.abs(pass_offset) > offset_thld:
+    # Multiple pass as long as the difference is more than 1dB or counter is 6    
+    while (np.abs(pass_offset) > offset_thld) or (counter < 6):
         offset_thld = 1
         counter += 1
         new_matchset = volume_matching(gpmfile,
@@ -477,20 +478,12 @@ def vmatch_multi_pass(gpmfile,
         # Check offset found.
         gr_offset = new_matchset.attrs['final_offset']
         pass_offset = new_matchset.attrs['offset_found']
-        if np.isnan(pass_offset):
-            counter -= 1
-            break
-
-        if np.abs(pass_offset) > np.abs(offset_keeping_track[-1]):
+        if (np.abs(pass_offset) > np.abs(offset_keeping_track[-1])) or np.isnan(pass_offset):
             # Solution converged already. Using previous iteration as final result.
             counter -= 1
             break
 
         matchset = new_matchset  # No error with results.
-        if counter == 6:
-            print(f'Solution did not converge for {gpmfile}.')
-            break
-
         offset_keeping_track.append(pass_offset)
         final_offset_keeping_track.append(gr_offset)
 
