@@ -112,12 +112,8 @@ def savedata(matchset, output_dir, outfilename):
     outfilename: str
         Output file name.
     '''
-    outfile = os.path.join(output_dir, outfilename)
-
-    if not os.path.exists(outfile):
-        matchset.to_netcdf(outfile, encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
-    else:
-        print(f'Output file {outfile} already exists.')
+    outfile = os.path.join(output_dir, outfilename)    
+    matchset.to_netcdf(outfile, encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})    
 
     return None
 
