@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 15/05/2020
+@date: 17/05/2020
     _mkdir
     get_offset
     savedata
@@ -50,7 +50,7 @@ def _mkdir(dir):
     return None
 
 
-def get_offset(matchset, loose=False):
+def get_offset(matchset, loose=False) -> float:
     '''
     Compute the Offset between GR and GPM.
 
@@ -58,6 +58,9 @@ def get_offset(matchset, loose=False):
     ==========
     matchset: xr.Dataset
         Dataset of volume matching.
+    loose: bool
+        Use of STD to constrain the offset calculation. Better quality if false
+        but less likely to find a solution.
 
     Returns:
     ========
