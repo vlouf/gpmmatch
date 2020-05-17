@@ -32,7 +32,7 @@ import gpmmatch
 from gpmmatch import NoRainError
 
 
-def _mkdir(dir):
+def _mkdir(dir: str):
     """
     Make directory.
     """
@@ -47,7 +47,7 @@ def _mkdir(dir):
     return None
 
 
-def remove(flist):
+def remove(flist: list):
     '''
     Remove file if it exists.
     '''
@@ -98,6 +98,9 @@ def get_radar_band(rid: int) -> str:
     df = gpmmatch.default.load_national_archive_info()
     pos = (df.id == int(rid))
     band = df.band[pos].values[0]
+    if type(band) is not str:
+        raise TypeError(f'Frequency band should be a str, not a {type(band)}.')
+
     return band
 
 
@@ -155,6 +158,10 @@ def buffer(gpmfile, date, rid):
     rid: str
         Groud radar identification
     '''
+    band = get_radar_band(rid)
+    if band not in ['S', 'C', 'X']:
+        raise ValueError(f'Improper radar band, should be S, C or X not {band}.')
+
     inzip = get_radar_archive_file(date, rid)
     if inzip is None:
         return None
@@ -168,7 +175,7 @@ def buffer(gpmfile, date, rid):
     try:
         _ = gpmmatch.vmatch_multi_pass(gpmfile,
                                        grfile,
-                                       radar_band='S',
+                                       radar_band=band,
                                        refl_name='reflectivity',
                                        fname_prefix=rid,
                                        gr_refl_threshold=GR_THLD,
