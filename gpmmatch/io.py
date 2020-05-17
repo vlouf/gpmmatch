@@ -98,7 +98,7 @@ def read_GPM(infile, refl_min_thld=0):
     gpmfile: str
         GPM data file.
     refl_min_thld: float
-        Minimum threshold applied to GPM reflectivity. 
+        Minimum threshold applied to GPM reflectivity.
 
     Returns:
     --------
@@ -427,5 +427,10 @@ def data_load_and_checks(gpmfile,
 
     # Now it's turn to read the ground radar.
     radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
+    if radar_band == 'C':
+        corr_refl = correct.correct_cband_attenuation(radar.fields[refl_name]['data'])
+        refl_dict = radar.fields[refl_name].pop()
+        refl_dict['data'] = corr_refl
+        radar.add_fields(refl_name, refl_dict)
 
     return gpmset, radar
