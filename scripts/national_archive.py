@@ -4,10 +4,11 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 16/05/2020
+@date: 17/05/2020
     _mkdir
     remove
     get_radar_archive_file
+    get_radar_band
     extract_zip
     buffer
     main
@@ -78,6 +79,26 @@ def get_radar_archive_file(date, rid):
         return None
 
     return file
+
+
+def get_radar_band(rid: int) -> str:
+    '''
+    Get radar frequency-band information from the Australian radar network.
+
+    Parameter:
+    ==========
+    rid: int
+        Radar rapic identification number.
+
+    Returns:
+    ========
+    band: str
+        Radar frequency band ('S' or 'C')
+    '''
+    df = gpmmatch.default.load_national_archive_info()
+    pos = (df.id == int(rid))
+    band = df.band[pos].values[0]
+    return band
 
 
 def extract_zip(inzip, date, path='/scratch/kl02/vhl548/unzipdir'):
