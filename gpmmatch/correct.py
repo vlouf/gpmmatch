@@ -5,14 +5,36 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 22/04/2020
+@date: 17/05/2020
 
+    correct_cband_attenuation
     correct_parallax
     convert_sat_refl_to_gr_band
     compute_gaussian_curvature
     grid_displacement
 '''
 import numpy as np
+
+
+def correct_cband_attenuation(reflectivity):
+    '''
+    Correct from C-Band attenuation using a Z-A relationship derived from
+    T-matrix calculations using the Darwin disdrometer.
+
+    Parameters:
+    ===========
+    reflectivity: ndarray
+        Input C-band uncorrected reflectivity
+
+    Returns:
+    ========
+    corr_refl: ndarray
+        Attenuation-corrected reflectivity.
+    '''
+    ze = 10 ** (reflectivity / 10)
+    atten = 1.31885e-6 * ze + 1.8041e-3
+    corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
+    return corr_refl
 
 
 def correct_parallax(sr_x, sr_y, gpmset):
@@ -95,9 +117,9 @@ def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
         cof = np.array([ 1.21547932e-06, -1.23266138e-04,  6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
         dfr = 3.2 / 5.5 * np.poly1d(cof)
     else:
-         raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')        
+         raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
 
-    return refl_gpm + dfr(refl_gpm)    
+    return refl_gpm + dfr(refl_gpm)
 
 
 def compute_gaussian_curvature(lat0):
