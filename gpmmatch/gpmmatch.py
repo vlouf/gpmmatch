@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 17/05/2020
+@date: 18/05/2020
     _mkdir
     get_offset
     savedata
@@ -126,7 +126,8 @@ def volume_matching(gpmfile,
                     gr_refl_threshold=10,
                     radar_band='C',
                     refl_name='corrected_reflectivity',
-                    fname_prefix=None):
+                    fname_prefix=None,
+                    is_loose_offset=False):
     '''
     Performs the volume matching of GPM satellite data to ground based radar.
 
@@ -150,6 +151,9 @@ def volume_matching(gpmfile,
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
+    is_loose_offset: bool
+        Computing offset using the strict way or a less accurate way (but with
+        a higher likelyhood to yield a result).
 
     Returns:
     --------
@@ -336,7 +340,7 @@ def volume_matching(gpmfile,
     iscan, _, _ = np.where(ar == ar.min())
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
-    offset = get_offset(matchset)
+    offset = get_offset(matchset, is_loose_offset)
 
     if np.isnan(offset):
         raise NoRainError('No offset found.')
@@ -388,7 +392,8 @@ def vmatch_multi_pass(gpmfile,
                       radar_band='C',
                       refl_name='corrected_reflectivity',
                       fname_prefix=None,
-                      output_dir=None):
+                      output_dir=None,
+                      is_loose_offset=False):
     '''
     Multi-pass volume matching with automatic offset computation.
 
@@ -414,6 +419,9 @@ def vmatch_multi_pass(gpmfile,
         Name of the ground radar to use as label for the output file.
     output_dir: str
         Path to output directory.
+    is_loose_offset: bool
+        Computing offset using the strict way or a less accurate way (but with
+        a higher likelyhood to yield a result).
     '''
     def _save(dset, output_directory):
         '''
