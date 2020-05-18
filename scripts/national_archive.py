@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 17/05/2020
+@date: 18/05/2020
     _mkdir
     remove
     get_radar_archive_file
@@ -179,7 +179,8 @@ def buffer(gpmfile, date, rid):
                                        refl_name='reflectivity',
                                        fname_prefix=rid,
                                        gr_refl_threshold=GR_THLD,
-                                       output_dir=OUTPATH)
+                                       output_dir=OUTPATH,
+                                       is_loose_offset=IS_LOOSE_OFFSET)
     except NoRainError:
         pass
     except Exception:
@@ -239,13 +240,20 @@ if __name__ == "__main__":
         help='Ground radar reflectivity threshold.',
         required=True)
 
-    parser.add_argument('--unravel', dest='unravel', action='store_true')
-    parser.add_argument('--no-unravel', dest='unravel', action='store_false')
-    parser.set_defaults(unravel=True)
+    parser.add_argument('--loose',
+                        dest='loose_offset',
+                        action='store_true',
+                        help='Use a loose method to compute the offset (More results but less confidence).',)
+    parser.add_argument('--no-loose',
+                        dest='loose_offset',
+                        action='store_false',
+                        help='Use a strict method to compute the offset (Higher confidence but less results).',)
+    parser.set_defaults(loose_offset=False)
 
     args = parser.parse_args()
     RID = args.rid
     GR_THLD = args.grthld
+    IS_LOOSE_OFFSET = args.loose_offset
     if args.outdir is None:
         OUTPATH = os.path.join(os.getcwd(), f'{RID}')
     else:

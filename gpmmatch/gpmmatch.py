@@ -457,7 +457,8 @@ def vmatch_multi_pass(gpmfile,
                                refl_name=refl_name,
                                fname_prefix=fname_prefix,
                                gr_beamwidth=gr_beamwidth,
-                               gr_refl_threshold=gr_refl_threshold)
+                               gr_refl_threshold=gr_refl_threshold,
+                               is_loose_offset=is_loose_offset)
     pass_offset = matchset.attrs['offset_found']
     gr_offset = pass_offset
     if np.isnan(pass_offset):
@@ -479,7 +480,8 @@ def vmatch_multi_pass(gpmfile,
                                        refl_name=refl_name,
                                        fname_prefix=fname_prefix,
                                        gr_beamwidth=gr_beamwidth,
-                                       gr_refl_threshold=gr_refl_threshold)
+                                       gr_refl_threshold=gr_refl_threshold,
+                                       is_loose_offset=is_loose_offset)
 
         # Save intermediary file.        
         _save(new_matchset, output_dir_inter_pass)
