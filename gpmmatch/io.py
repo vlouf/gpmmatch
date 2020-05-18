@@ -431,6 +431,6 @@ def data_load_and_checks(gpmfile,
         corr_refl = correct.correct_cband_attenuation(radar.fields[refl_name]['data'])
         refl_dict = radar.fields.pop(refl_name)
         refl_dict['data'] = corr_refl
-        radar.add_fields(refl_name, refl_dict)
+        radar.add_field(refl_name, refl_dict)
 
     return gpmset, radar
