@@ -262,7 +262,4 @@ if __name__ == "__main__":
 
     CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        main()
-    pass
+    main()

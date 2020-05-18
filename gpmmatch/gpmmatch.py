@@ -449,16 +449,18 @@ def vmatch_multi_pass(gpmfile,
     _mkdir(output_dir_inter_pass)
 
     # First pass
-    matchset = volume_matching(gpmfile,
-                               grfile,
-                               grfile2=grfile2,
-                               gr_offset=gr_offset,
-                               radar_band=radar_band,
-                               refl_name=refl_name,
-                               fname_prefix=fname_prefix,
-                               gr_beamwidth=gr_beamwidth,
-                               gr_refl_threshold=gr_refl_threshold,
-                               is_loose_offset=is_loose_offset)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        matchset = volume_matching(gpmfile,
+                                   grfile,
+                                   grfile2=grfile2,
+                                   gr_offset=gr_offset,
+                                   radar_band=radar_band,
+                                   refl_name=refl_name,
+                                   fname_prefix=fname_prefix,
+                                   gr_beamwidth=gr_beamwidth,
+                                   gr_refl_threshold=gr_refl_threshold,
+                                   is_loose_offset=is_loose_offset)
     pass_offset = matchset.attrs['offset_found']
     gr_offset = pass_offset
     if np.isnan(pass_offset):
@@ -472,16 +474,18 @@ def vmatch_multi_pass(gpmfile,
     while (np.abs(pass_offset) > offset_thld) or (counter < 6):
         offset_thld = 1
         counter += 1
-        new_matchset = volume_matching(gpmfile,
-                                       grfile,
-                                       grfile2=grfile2,
-                                       gr_offset=gr_offset,
-                                       radar_band=radar_band,
-                                       refl_name=refl_name,
-                                       fname_prefix=fname_prefix,
-                                       gr_beamwidth=gr_beamwidth,
-                                       gr_refl_threshold=gr_refl_threshold,
-                                       is_loose_offset=is_loose_offset)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            new_matchset = volume_matching(gpmfile,
+                                           grfile,
+                                           grfile2=grfile2,
+                                           gr_offset=gr_offset,
+                                           radar_band=radar_band,
+                                           refl_name=refl_name,
+                                           fname_prefix=fname_prefix,
+                                           gr_beamwidth=gr_beamwidth,
+                                           gr_refl_threshold=gr_refl_threshold,
+                                           is_loose_offset=is_loose_offset)
 
         # Save intermediary file.        
         _save(new_matchset, output_dir_inter_pass)
