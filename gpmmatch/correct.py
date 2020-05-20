@@ -6,7 +6,7 @@ Various utilities for correction and conversion of satellite data.
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
 @date: 20/05/2020
-
+    correct_xband_attenuation
     correct_cband_attenuation
     correct_parallax
     convert_sat_refl_to_gr_band
@@ -14,6 +14,27 @@ Various utilities for correction and conversion of satellite data.
     grid_displacement
 '''
 import numpy as np
+
+
+def correct_xband_attenuation(reflectivity):
+    '''
+    Correct from X-Band attenuation using a Z-A relationship derived from
+    T-matrix calculations using the Meteor disdrometer.
+
+    Parameters:
+    ===========
+    reflectivity: ndarray
+        Input X-band uncorrected reflectivity
+
+    Returns:
+    ========
+    corr_refl: ndarray
+        Attenuation-corrected reflectivity.
+    '''
+    ze = 10 ** (reflectivity / 10)        
+    atten = 3.30240183e-6 * ze + 9.67774379e-2
+    corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
+    return corr_refl
 
 
 def correct_cband_attenuation(reflectivity):
