@@ -176,7 +176,7 @@ def buffer(gpmfile, date, rid):
         _ = gpmmatch.vmatch_multi_pass(gpmfile,
                                        grfile,
                                        radar_band=band,
-                                       refl_name='reflectivity',
+                                       refl_name=REFL_NAME,
                                        fname_prefix=rid,
                                        gr_refl_threshold=GR_THLD,
                                        output_dir=OUTPATH,
@@ -184,7 +184,7 @@ def buffer(gpmfile, date, rid):
     except NoRainError:
         pass
     except Exception:
-        print(f'ERROR: {gpmfile}.')        
+        print(f'ERROR: {gpmfile}.')
         traceback.print_exc()
 
     remove([grfile])
@@ -238,6 +238,13 @@ if __name__ == "__main__":
         type=float,
         help='Ground radar reflectivity threshold.',
         required=True)
+    parser.add_argument(
+        '-f',
+        '--field-name',
+        dest='fieldname',
+        type=str,
+        help='Ground radar reflectivity field name',
+        default='reflectivity')
 
     parser.add_argument('--loose',
                         dest='loose_offset',
@@ -253,6 +260,8 @@ if __name__ == "__main__":
     RID = args.rid
     GR_THLD = args.grthld
     IS_LOOSE_OFFSET = args.loose_offset
+    REFL_NAME = args.fieldname
+
     if args.outdir is None:
         OUTPATH = os.path.join(os.getcwd(), f'{RID}')
     else:
