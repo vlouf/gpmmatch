@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 18/05/2020
+@date: 20/05/2020
 
     NoPrecipitationError
     get_gpm_orbit
@@ -427,8 +427,11 @@ def data_load_and_checks(gpmfile,
 
     # Now it's turn to read the ground radar.
     radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
-    if radar_band == 'C':
-        corr_refl = correct.correct_cband_attenuation(radar.fields[refl_name]['data'])
+    if radar_band in ['X', 'C']:
+        if radar_band == 'X':
+            corr_refl = correct.correct_xband_attenuation(radar.fields[refl_name]['data'])
+        elif radar_band == 'C':
+            corr_refl = correct.correct_cband_attenuation(radar.fields[refl_name]['data'])
         refl_dict = radar.fields.pop(refl_name)
         refl_dict['data'] = corr_refl
         radar.add_field(refl_name, refl_dict)
