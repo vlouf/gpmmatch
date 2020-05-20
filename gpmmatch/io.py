@@ -377,7 +377,7 @@ def data_load_and_checks(gpmfile,
         if gr_domain.sum() == 0:
             raise NoPrecipitationError('GPM swath does not go through the radar domain. ' + info)
         else:
-            raise NoPrecipitationError('GPM swath is on the edge of the ground radar domain and there is not enough measurements inside it. ' + info)
+            raise NoPrecipitationError('Not enough GPM precipitation inside ground radar domain. ' + info)
 
     nprof = np.sum(gpmset.flagPrecip.values[gr_domain])
     if nprof < 10:
@@ -415,13 +415,13 @@ def data_load_and_checks(gpmfile,
     gpmset.z.attrs['units'] = 'm'
     gpmset.z.attrs['description'] = 'z-axis parallax corrected coordinates in relation to ground radar.'
     gpmset.precip_in_gr_domain.attrs['units'] = 'bool'
-    gpmset.precip_in_gr_domain.attrs['description'] = 'GPM data-columns with precipitation inside the ground radar scope.'
+    gpmset.precip_in_gr_domain.attrs['description'] = 'Satellite data-columns with precipitation inside the ground radar scope.'
     gpmset.range_from_gr.attrs['units'] = 'm'
     gpmset.range_from_gr.attrs['description'] = 'Range from satellite bins in relation to ground radar'
     gpmset.elev_from_gr.attrs['units'] = 'degrees'
     gpmset.elev_from_gr.attrs['description'] = 'Elevation from satellite bins in relation to ground radar'
     gpmset.reflectivity_grband.attrs['units'] = 'dBZ'
-    gpmset.reflectivity_grband.attrs['description'] = f'Reflectivity of stratiform precipitation converted to {radar_band}-band.'
+    gpmset.reflectivity_grband.attrs['description'] = f'Satellite reflectivity converted to {radar_band}-band.'
     gpmset.attrs['nprof'] = nprof
     gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
 
