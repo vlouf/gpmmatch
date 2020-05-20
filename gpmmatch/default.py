@@ -5,9 +5,10 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 24/02/2020
-@date: 17/05/2020
+@date: 20/05/2020
 
     load_national_archive_info
+    gpmset_metadata
     get_metadata
 '''
 import os
@@ -30,6 +31,26 @@ def load_national_archive_info():
     df = pd.read_csv(myfile).drop_duplicates('id', keep='last').reset_index()
 
     return df
+
+
+def gpmset_metadata():
+    '''
+    Return a bunch of metadata (description, units, long_name, etc.) for the
+    gpmset.
+
+    Returns:
+    ========
+    metadata: dict
+    '''
+    metadata = {'overpass_time': {'description': 'GPM overpass time at the closest from ground radar site'},
+                'x': {'units': 'm', 'description': 'x-axis parallax corrected coordinates in relation to ground radar.'},
+                'y': {'units': 'm', 'description': 'y-axis parallax corrected coordinates in relation to ground radar.'},
+                'z': {'units': 'm', 'description': 'z-axis parallax corrected coordinates in relation to ground radar.'},
+                'precip_in_gr_domain': {'units': '1', 'description': 'Satellite data-columns with precipitation inside the ground radar scope.'},
+                'range_from_gr': {'units': 'm', 'description': 'Range from satellite bins in relation to ground radar'},
+                'elev_from_gr': {'units': 'degrees', 'description': 'Elevation from satellite bins in relation to ground radar'},
+                'reflectivity_grband': {'units': 'dBZ'}}
+    return metadata
 
 
 def get_metadata():
