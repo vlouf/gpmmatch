@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 18/05/2020
+@date: 21/05/2020
     _mkdir
     remove
     get_radar_archive_file
@@ -184,8 +184,7 @@ def buffer(gpmfile, date, rid):
     except NoRainError:
         pass
     except Exception:
-        print('!!! ERROR !!!')
-        print(gpmfile)
+        print(f'ERROR: {gpmfile}.')        
         traceback.print_exc()
 
     remove([grfile])
