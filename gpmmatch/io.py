@@ -25,6 +25,7 @@ import numpy as np
 import xarray as xr
 
 from . import correct
+from . import default
 
 
 class NoPrecipitationError(Exception):
@@ -402,32 +403,26 @@ def data_load_and_checks(gpmfile,
                            'z': (('nscan', 'nray', 'nbin'), z_sr),
                            'reflectivity_grband': (('nscan', 'nray', 'nbin'), reflgpm_grband)})
 
+    # Get time of the overpass (closest point from ground radar).
     gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
     gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
     gpmset = gpmset.merge({'overpass_time': (gpmtime0)})
 
     # Attributes
-    gpmset.overpass_time.attrs['description'] = 'GPM overpass time at the closest from ground radar site'
-    gpmset.x.attrs['units'] = 'm'
-    gpmset.x.attrs['description'] = 'x-axis parallax corrected coordinates in relation to ground radar.'
-    gpmset.y.attrs['units'] = 'm'
-    gpmset.y.attrs['description'] = 'y-axis parallax corrected coordinates in relation to ground radar.'
-    gpmset.z.attrs['units'] = 'm'
-    gpmset.z.attrs['description'] = 'z-axis parallax corrected coordinates in relation to ground radar.'
-    gpmset.precip_in_gr_domain.attrs['units'] = 'bool'
-    gpmset.precip_in_gr_domain.attrs['description'] = 'Satellite data-columns with precipitation inside the ground radar scope.'
-    gpmset.range_from_gr.attrs['units'] = 'm'
-    gpmset.range_from_gr.attrs['description'] = 'Range from satellite bins in relation to ground radar'
-    gpmset.elev_from_gr.attrs['units'] = 'degrees'
-    gpmset.elev_from_gr.attrs['description'] = 'Elevation from satellite bins in relation to ground radar'
-    gpmset.reflectivity_grband.attrs['units'] = 'dBZ'
+    metadata = default.gpmset_metadata()
+    for k, v in metadata.items():
+        for sk, sv in v.items():
+            try:
+                gpmset[k].attrs[sk] = sv
+            except KeyError:
+                continue    
     gpmset.reflectivity_grband.attrs['description'] = f'Satellite reflectivity converted to {radar_band}-band.'
     gpmset.attrs['nprof'] = nprof
     gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
 
-    # Now it's turn to read the ground radar.
+    # Time to read the ground radar data.
     radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
-    if radar_band in ['X', 'C']:
+    if radar_band in ['X', 'C']:  # Correct attenuation of X or C bands.
         if radar_band == 'X':
             corr_refl = correct.correct_xband_attenuation(radar.fields[refl_name]['data'])
         elif radar_band == 'C':
