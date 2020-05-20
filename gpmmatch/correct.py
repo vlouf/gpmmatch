@@ -5,7 +5,7 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 17/05/2020
+@date: 20/05/2020
 
     correct_cband_attenuation
     correct_parallax
@@ -32,6 +32,7 @@ def correct_cband_attenuation(reflectivity):
         Attenuation-corrected reflectivity.
     '''
     ze = 10 ** (reflectivity / 10)
+    # T-matrix relationship found with TWP Darwin disdrometer.
     atten = 1.31885e-6 * ze + 1.8041e-3
     corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
     return corr_refl
