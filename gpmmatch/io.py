@@ -9,8 +9,12 @@ volume_matching.
 @date: 20/05/2020
 
     NoPrecipitationError
+    _read_radar
+    savedata
     get_gpm_orbit
     read_GPM
+    read_radars
+    get_ground_radar_attributes
     data_load_and_checks
 '''
 import re
@@ -66,6 +70,25 @@ def _read_radar(infile, refl_name=None):
             raise
 
     return radar
+
+
+def savedata(matchset, output_dir, outfilename):
+    '''
+    Save dataset as a netCDF4.
+
+    Parameters:
+    ----------
+    matchset: xarray
+        Dataset containing the matched GPM and ground radar data.
+    output_dir: str
+        Path to output directory.
+    outfilename: str
+        Output file name.
+    '''
+    outfile = os.path.join(output_dir, outfilename)
+    matchset.to_netcdf(outfile, encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
+
+    return None
 
 
 def get_gpm_orbit(gpmfile):
@@ -415,7 +438,7 @@ def data_load_and_checks(gpmfile,
             try:
                 gpmset[k].attrs[sk] = sv
             except KeyError:
-                continue    
+                continue
     gpmset.reflectivity_grband.attrs['description'] = f'Satellite reflectivity converted to {radar_band}-band.'
     gpmset.attrs['nprof'] = nprof
     gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius

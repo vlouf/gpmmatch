@@ -6,10 +6,9 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 18/05/2020
+@date: 20/05/2020
     _mkdir
-    get_offset
-    savedata
+    get_offset    
     volume_matching
     vmatch_multi_pass
 '''
@@ -26,7 +25,7 @@ import xarray as xr
 
 from scipy.stats import mode
 
-from .io import data_load_and_checks
+from .io import data_load_and_checks, savedata
 from .default import get_metadata
 
 
@@ -97,25 +96,6 @@ def get_offset(matchset, loose=False) -> float:
     offset = deltax[npos].mean()
 
     return offset
-
-
-def savedata(matchset, output_dir, outfilename):
-    '''
-    Save dataset as a netCDF4.
-
-    Parameters:
-    ----------
-    matchset: xarray
-        Dataset containing the matched GPM and ground radar data.
-    output_dir: str
-        Path to output directory.
-    outfilename: str
-        Output file name.
-    '''
-    outfile = os.path.join(output_dir, outfilename)    
-    matchset.to_netcdf(outfile, encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})    
-
-    return None
 
 
 def volume_matching(gpmfile,
