@@ -93,6 +93,8 @@ def get_offset(matchset, loose=False) -> float:
 
     m, _ = mode(np.round(deltax * 2) / 2, nan_policy='omit')
     npos = ((deltax < m[0] + deltax.std()) & (deltax > m[0] - deltax.std()))
+    if np.sum(npos) == 0:
+        return np.NaN
     offset = deltax[npos].mean()
 
     return offset
@@ -322,8 +324,8 @@ def volume_matching(gpmfile,
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
     offset = get_offset(matchset, is_loose_offset)
 
-    if np.isnan(offset):
-        raise NoRainError('No offset found.')
+    # if np.isnan(offset):
+    #     raise NoRainError('No offset found.')
 
     radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
     radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
@@ -443,12 +445,14 @@ def vmatch_multi_pass(gpmfile,
                                    is_loose_offset=is_loose_offset)
     pass_offset = matchset.attrs['offset_found']
     gr_offset = pass_offset
-    if np.isnan(pass_offset):
-        raise ValueError('Pass offset NAN.')
 
     offset_keeping_track = [pass_offset]
     final_offset_keeping_track = [matchset.attrs['final_offset']]    
     _save(matchset, output_dir_first_pass)
+
+    if np.isnan(pass_offset):
+        print('Pass offset NAN.')
+        return None
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
     while (np.abs(pass_offset) > offset_thld) or (counter < 6):
@@ -481,6 +485,8 @@ def vmatch_multi_pass(gpmfile,
         matchset = new_matchset  # No error with results.
         offset_keeping_track.append(pass_offset)
         final_offset_keeping_track.append(gr_offset)
+        if np.abs(pass_offset) > offset_thld:
+            break
 
     # Save final iteration.
     _save(matchset, output_dir_final_pass)
