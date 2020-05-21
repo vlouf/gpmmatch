@@ -6,9 +6,9 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 20/05/2020
+@date: 21/05/2020
     _mkdir
-    get_offset    
+    get_offset
     volume_matching
     vmatch_multi_pass
 '''
@@ -92,10 +92,11 @@ def get_offset(matchset, loose=False) -> float:
     deltax = deltax[~np.isnan(deltax)]
 
     m, _ = mode(np.round(deltax * 2) / 2, nan_policy='omit')
-    npos = ((deltax < m[0] + deltax.std()) & (deltax > m[0] - deltax.std()))
-    if np.sum(npos) == 0:
-        return np.NaN
-    offset = deltax[npos].mean()
+    try:
+        npos = ((deltax < m[0] + deltax.std()) & (deltax > m[0] - deltax.std()))
+        offset = deltax[npos].mean()
+    except Exception:
+        offset = np.NaN
 
     return offset
 
@@ -447,7 +448,7 @@ def vmatch_multi_pass(gpmfile,
     gr_offset = pass_offset
 
     offset_keeping_track = [pass_offset]
-    final_offset_keeping_track = [matchset.attrs['final_offset']]    
+    final_offset_keeping_track = [matchset.attrs['final_offset']]
     _save(matchset, output_dir_first_pass)
 
     if np.isnan(pass_offset):
@@ -471,7 +472,7 @@ def vmatch_multi_pass(gpmfile,
                                            gr_refl_threshold=gr_refl_threshold,
                                            is_loose_offset=is_loose_offset)
 
-        # Save intermediary file.        
+        # Save intermediary file.
         _save(new_matchset, output_dir_inter_pass)
 
         # Check offset found.
