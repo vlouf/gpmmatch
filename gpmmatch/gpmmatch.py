@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 21/05/2020
+@date: 22/05/2020
     _mkdir
     get_offset
     volume_matching
@@ -51,7 +51,8 @@ def _mkdir(dir):
 
 def get_offset(matchset, loose=False) -> float:
     '''
-    Compute the Offset between GR and GPM.
+    Compute the Offset between GR and GPM. It will try to compute the mode of
+    the distribution and if it fails, then it will use the mean.
 
     Parameter:
     ==========
@@ -96,7 +97,7 @@ def get_offset(matchset, loose=False) -> float:
         npos = ((deltax < m[0] + deltax.std()) & (deltax > m[0] - deltax.std()))
         offset = deltax[npos].mean()
     except Exception:
-        offset = np.NaN
+        offset = np.mean(deltax)
 
     return offset
 
