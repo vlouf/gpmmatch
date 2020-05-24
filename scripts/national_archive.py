@@ -104,6 +104,27 @@ def get_radar_band(rid: int) -> str:
     return band
 
 
+def get_radar_beamwidth(rid: int) -> float:
+    '''
+    Get radar beamwidth information from the Australian radar network.
+
+    Parameter:
+    ==========
+    rid: int
+        Radar rapic identification number.
+
+    Returns:
+    ========
+    beamwidth: float
+        Radar beamwidth.
+    '''
+    df = gpmmatch.default.load_national_archive_info()
+    pos = (df.id == int(rid))
+    beamwidth = df.beamwidth[pos].values[0]
+
+    return beamwidth
+
+
 def extract_zip(inzip, date, path='/scratch/kl02/vhl548/unzipdir'):
     """
     Extract file in a daily archive zipfile for a specific datetime.
@@ -161,6 +182,7 @@ def buffer(gpmfile, date, rid):
     band = get_radar_band(rid)
     if band not in ['S', 'C', 'X']:
         raise ValueError(f'Improper radar band, should be S, C or X not {band}.')
+    beamwidth = get_radar_beamwidth(rid)
 
     inzip = get_radar_archive_file(date, rid)
     if inzip is None:
@@ -175,6 +197,7 @@ def buffer(gpmfile, date, rid):
     try:
         _ = gpmmatch.vmatch_multi_pass(gpmfile,
                                        grfile,
+                                       gr_beamwidth=beamwidth,
                                        radar_band=band,
                                        refl_name=REFL_NAME,
                                        fname_prefix=rid,
