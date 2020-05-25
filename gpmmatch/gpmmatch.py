@@ -229,6 +229,10 @@ def volume_matching(gpmfile,
     delta_t = np.zeros((nprof, ntilt)) + np.NaN  # Timedelta of sample
 
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
+        if elev_gr[jj] - gr_beamwidth / 2 < 0:
+            # Beam partially in the ground.
+            continue
+
         epos = (elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) & (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2)
         x[ii, jj] = np.mean(xsat[ii, epos])
         y[ii, jj] = np.mean(ysat[ii, epos])
