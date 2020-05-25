@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 24/05/2020
+@date: 25/05/2020
     _mkdir
     remove
     get_radar_archive_file
@@ -46,6 +46,36 @@ def _mkdir(dir: str):
         pass
 
     return None
+
+
+def check_reflectivity_field_name(infile: str) -> str:
+    """
+    Check reflectivity field name in the input radar file.
+
+    Parameter:
+    ==========
+    infile: str
+        Input radar file.
+
+    Returns:
+    ========
+    field_name: str
+        Name of the reflectivity field in the input radar file.
+    """
+    radar = pyart.aux_io.read_odim_h5(infile, file_field_names=True)
+
+    for field_name in ['DBZH_CLEAN', 'DBZH', 'TH', 'FIELD_ERROR']:
+        try:
+            _ = radar.fields[field_name]['data']
+            break
+        except Exception:
+            continue
+
+    if field_name == 'FIELD_ERROR':
+        raise KeyError(f'Reflectivity field name not found in {infile}.')
+
+    del radar
+    return field_name
 
 
 def remove(flist: list):
@@ -196,11 +226,17 @@ def buffer(gpmfile, date, rid):
         return None
 
     try:
+        refl_name = check_reflectivity_field_name(grfile)
+    except KeyError:        
+        traceback.print_exc()
+        return None
+
+    try:
         _ = gpmmatch.vmatch_multi_pass(gpmfile,
                                        grfile,
                                        gr_beamwidth=beamwidth,
                                        radar_band=band,
-                                       refl_name=REFL_NAME,
+                                       refl_name=refl_name,
                                        fname_prefix=rid,
                                        gr_refl_threshold=GR_THLD,
                                        output_dir=OUTPATH,
