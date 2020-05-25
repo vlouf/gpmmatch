@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 20/05/2020
+@date: 25/05/2020
 
     NoPrecipitationError
     _read_radar
@@ -55,7 +55,9 @@ def _read_radar(infile, refl_name=None):
     """
     try:
         if infile.lower().endswith(('.h5', '.hdf', '.hdf5')):
-            radar = pyart.aux_io.read_odim_h5(infile, include_fields=[refl_name])
+            radar = pyart.aux_io.read_odim_h5(infile,
+                                              include_fields=[refl_name],
+                                              file_field_names=True)
         else:
             radar = pyart.io.read(infile, include_fields=[refl_name])
     except Exception:
