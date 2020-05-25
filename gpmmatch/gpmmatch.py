@@ -67,9 +67,6 @@ def check_beamwidth(azimuth, gr_beamwidth):
     gr_beamwidth: float
         Corrected radar theta 3dB beamwidth.
     '''
-    if gr_beamwidth == 1:
-        return gr_beamwidth
-
     delta_azi = np.abs(azimuth[1] - azimuth[0])
     if delta_azi == gr_beamwidth:
         return gr_beamwidth
