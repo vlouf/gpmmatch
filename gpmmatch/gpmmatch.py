@@ -188,8 +188,12 @@ def volume_matching(gpmfile,
     else:
         ntilt = radar.nsweeps
 
-    # Extract ground radar data.
+    # In the case of oversampling in azimuth, elevation and azimuth must bbe
+    # treated differently.
+    gr_beamwidth_elevation = gr_beamwidth
     gr_beamwidth = check_beamwidth(radar.azimuth['data'], gr_beamwidth)
+
+    # Extract ground radar data.
     range_gr = radar.range['data']
     elev_gr = np.unique(radar.elevation['data'])
     xradar = radar.gate_x['data']
@@ -257,11 +261,12 @@ def volume_matching(gpmfile,
     delta_t = np.zeros((nprof, ntilt)) + np.NaN  # Timedelta of sample
 
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
-        if elev_gr[jj] - gr_beamwidth / 2 < 0:
+        if elev_gr[jj] - gr_beamwidth_elevation / 2 < 0:
             # Beam partially in the ground.
             continue
 
-        epos = (elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) & (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2)
+        epos = ((elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth_elevation / 2) &
+                (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth_elevation / 2))
         x[ii, jj] = np.mean(xsat[ii, epos])
         y[ii, jj] = np.mean(ysat[ii, epos])
         z[ii, jj] = np.mean(zsat[ii, epos])
