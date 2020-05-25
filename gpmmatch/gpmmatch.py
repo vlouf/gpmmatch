@@ -122,7 +122,7 @@ def check_beamwidth(azimuth, gr_beamwidth):
     if gr_beamwidth == 1:
         return gr_beamwidth
 
-    delta_azi = azimuth[1] - azimuth[0]
+    delta_azi = np.abs(azimuth[1] - azimuth[0])
     if delta_azi == gr_beamwidth:
         return gr_beamwidth
 
@@ -189,6 +189,7 @@ def volume_matching(gpmfile,
         ntilt = radar.nsweeps
 
     # Extract ground radar data.
+    gr_beamwidth = check_beamwidth(radar.azimuth['data'], gr_beamwidth)
     range_gr = radar.range['data']
     elev_gr = np.unique(radar.elevation['data'])
     xradar = radar.gate_x['data']
