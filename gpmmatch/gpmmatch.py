@@ -52,8 +52,7 @@ def _mkdir(dir):
 
 def check_beamwidth(azimuth, gr_beamwidth):
     '''
-    Check if the azimuthal sampling is equal to the beamwidth size. Apply
-    correction if not.
+    Correct the beamwidth (in the azimuthal plane) for the azimuth resolution.
 
     Parameters:
     ===========
@@ -67,9 +66,7 @@ def check_beamwidth(azimuth, gr_beamwidth):
     gr_beamwidth: float
         Corrected radar theta 3dB beamwidth.
     '''
-    delta_azi = np.abs(azimuth[1] - azimuth[0])
-    if delta_azi == gr_beamwidth:
-        return gr_beamwidth
+    delta_azi = np.abs(azimuth[1] - azimuth[0])    
 
     return gr_beamwidth + delta_azi / 2
 
@@ -229,8 +226,8 @@ def volume_matching(gpmfile,
     refl_gpm_raw = np.ma.masked_invalid(gpmset.zFactorCorrected.values[position_precip_domain])
     reflectivity_gpm_grband = np.ma.masked_invalid(gpmset.reflectivity_grband.values[position_precip_domain])
 
-    volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth) / 2) ** 2  # km3
-    volgr = 1e-9 * np.pi * dr * (R * np.pi / 180 * gr_beamwidth / 2) ** 2  # km3
+    volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth)) ** 2  # km3
+    volgr = 1e-9 * dr * (R * np.deg2rad(gr_beamwidth)) ** 2  # km3
 
     # Compute Path-integrated reflectivities
     pir_gr = 10 * np.log10(np.cumsum((10 ** (ground_radar_reflectivity / 10)).filled(0), axis=1) * dr)
