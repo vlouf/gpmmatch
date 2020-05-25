@@ -488,7 +488,8 @@ def vmatch_multi_pass(gpmfile,
     _save(matchset, output_dir_first_pass)
 
     if np.isnan(pass_offset):
-        print('Pass offset NAN.')
+        dtime = matchset.attrs['gpm_overpass_time']
+        print(f'Offset is NAN for pass {counter} on {dtime}.')
         return None
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
