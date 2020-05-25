@@ -297,14 +297,7 @@ if __name__ == "__main__":
         dest='grthld',
         type=float,
         help='Ground radar reflectivity threshold.',
-        required=True)
-    parser.add_argument(
-        '-f',
-        '--field-name',
-        dest='fieldname',
-        type=str,
-        help='Ground radar reflectivity field name',
-        default='reflectivity')
+        required=True)    
 
     parser.add_argument('--loose',
                         dest='loose_offset',
@@ -319,8 +312,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     RID = args.rid
     GR_THLD = args.grthld
-    IS_LOOSE_OFFSET = args.loose_offset
-    REFL_NAME = args.fieldname
+    IS_LOOSE_OFFSET = args.loose_offset    
 
     if args.outdir is None:
         OUTPATH = os.path.join(os.getcwd(), f'{RID}')
