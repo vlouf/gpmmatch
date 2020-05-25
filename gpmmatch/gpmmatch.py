@@ -8,6 +8,7 @@ latest version of TRMM data.
 @creation: 17/02/2020
 @date: 25/05/2020
     _mkdir
+    check_beamwidth
     get_offset
     volume_matching
     vmatch_multi_pass
@@ -47,6 +48,33 @@ def _mkdir(dir):
         pass
 
     return None
+
+
+def check_beamwidth(azimuth, gr_beamwidth):
+    '''
+    Check if the azimuthal sampling is equal to the beamwidth size. Apply
+    correction if not.
+
+    Parameters:
+    ===========
+    azimuth: ndarray
+        Azimuth
+    gr_beamwidth: float
+        Radar theta 3dB beamwidth.
+
+    Returns:
+    ========
+    gr_beamwidth: float
+        Corrected radar theta 3dB beamwidth.
+    '''
+    if gr_beamwidth == 1:
+        return gr_beamwidth
+
+    delta_azi = np.abs(azimuth[1] - azimuth[0])
+    if delta_azi == gr_beamwidth:
+        return gr_beamwidth
+
+    return gr_beamwidth + delta_azi / 2
 
 
 def get_offset(matchset, loose=False) -> float:
@@ -100,33 +128,6 @@ def get_offset(matchset, loose=False) -> float:
         offset = np.mean(deltax)
 
     return offset
-
-
-def check_beamwidth(azimuth, gr_beamwidth):
-    '''
-    Check if the azimuthal sampling is equal to the beamwidth size. Apply
-    correction if not.
-
-    Parameters:
-    ===========
-    azimuth: ndarray
-        Azimuth
-    gr_beamwidth: float
-        Radar theta 3dB beamwidth.
-
-    Returns:
-    ========
-    gr_beamwidth: float
-        Corrected radar theta 3dB beamwidth.
-    '''
-    if gr_beamwidth == 1:
-        return gr_beamwidth
-
-    delta_azi = np.abs(azimuth[1] - azimuth[0])
-    if delta_azi == gr_beamwidth:
-        return gr_beamwidth
-
-    return gr_beamwidth + delta_azi / 2
 
 
 def volume_matching(gpmfile,
@@ -362,9 +363,6 @@ def volume_matching(gpmfile,
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
     offset = get_offset(matchset, is_loose_offset)
-
-    # if np.isnan(offset):
-    #     raise NoRainError('No offset found.')
 
     radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
     radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
