@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 22/05/2020
+@date: 25/05/2020
     _mkdir
     get_offset
     volume_matching
@@ -100,6 +100,33 @@ def get_offset(matchset, loose=False) -> float:
         offset = np.mean(deltax)
 
     return offset
+
+
+def check_beamwidth(azimuth, gr_beamwidth):
+    '''
+    Check if the azimuthal sampling is equal to the beamwidth size. Apply
+    correction if not.
+
+    Parameters:
+    ===========
+    azimuth: ndarray
+        Azimuth
+    gr_beamwidth: float
+        Radar theta 3dB beamwidth.
+
+    Returns:
+    ========
+    gr_beamwidth: float
+        Corrected radar theta 3dB beamwidth.
+    '''
+    if gr_beamwidth == 1:
+        return gr_beamwidth
+
+    delta_azi = azimuth[1] - azimuth[0]
+    if delta_azi == gr_beamwidth:
+        return gr_beamwidth
+
+    return gr_beamwidth + delta_azi / 2
 
 
 def volume_matching(gpmfile,
