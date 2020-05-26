@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 25/05/2020
+@date: 26/05/2020
     _mkdir
     check_beamwidth
     get_offset
@@ -48,27 +48,6 @@ def _mkdir(dir):
         pass
 
     return None
-
-
-def check_beamwidth(azimuth, gr_beamwidth):
-    '''
-    Correct the beamwidth (in the azimuthal plane) for the azimuth resolution.
-
-    Parameters:
-    ===========
-    azimuth: ndarray
-        Azimuth
-    gr_beamwidth: float
-        Radar theta 3dB beamwidth.
-
-    Returns:
-    ========
-    gr_beamwidth: float
-        Corrected radar theta 3dB beamwidth.
-    '''
-    delta_azi = np.abs(azimuth[1] - azimuth[0])    
-
-    return gr_beamwidth + delta_azi / 2
 
 
 def get_offset(matchset, loose=False) -> float:
@@ -183,11 +162,6 @@ def volume_matching(gpmfile,
     else:
         ntilt = radar.nsweeps
 
-    # In the case of oversampling in azimuth, elevation and azimuth must bbe
-    # treated differently.
-    gr_beamwidth_elevation = gr_beamwidth
-    gr_beamwidth = check_beamwidth(radar.azimuth['data'], gr_beamwidth)
-
     # Extract ground radar data.
     range_gr = radar.range['data']
     elev_gr = np.unique(radar.elevation['data'])
@@ -232,7 +206,6 @@ def volume_matching(gpmfile,
     # Compute Path-integrated reflectivities
     pir_gr = 10 * np.log10(np.cumsum((10 ** (ground_radar_reflectivity / 10)).filled(0), axis=1) * dr)
     pir_gr = np.ma.masked_invalid(pir_gr)
-
     pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * 125)
     pir_gpm = np.ma.masked_invalid(pir_gpm)
 
@@ -256,12 +229,12 @@ def volume_matching(gpmfile,
     delta_t = np.zeros((nprof, ntilt)) + np.NaN  # Timedelta of sample
 
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
-        if elev_gr[jj] - gr_beamwidth_elevation / 2 < 0:
+        if elev_gr[jj] - gr_beamwidth  / 2 < 0:
             # Beam partially in the ground.
             continue
 
-        epos = ((elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth_elevation / 2) &
-                (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth_elevation / 2))
+        epos = ((elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) &
+                (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2))
         x[ii, jj] = np.mean(xsat[ii, epos])
         y[ii, jj] = np.mean(ysat[ii, epos])
         z[ii, jj] = np.mean(zsat[ii, epos])
