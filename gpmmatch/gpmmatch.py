@@ -193,6 +193,10 @@ def volume_matching(gpmfile,
     tradar = cftime.num2pydate(radar.time['data'], radar.time['units']).astype('datetime64')
     deltat = (tradar - gpmset.overpass_time.values)
 
+    # Correct ground-radar elevation from the refraction:
+    ecorr = corr_elev_refra(np.deg2rad(elev_gr))
+    elev_gr = elev_gr + np.rad2deg(ecorr)
+
     rmax_gr = range_gr.max()
     dr = range_gr[1] - range_gr[0]
 
