@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 28/05/2020
+@date: 29/05/2020
     _mkdir
     check_beamwidth
     get_offset
@@ -374,6 +374,8 @@ def volume_matching(gpmfile,
     matchset.attrs['radar_end_time'] = radar_end_time
     matchset.attrs['radar_longitude'] = radar.longitude['data'][0]
     matchset.attrs['radar_latitude'] = radar.latitude['data'][0]
+    matchset.attrs['radar_range_res'] = radar.range['data'][1] - radar.range['data'][0]
+    matchset.attrs['radar_beamwidth'] = gr_beamwidth
     matchset.attrs['country'] = 'Australia'
     matchset.attrs['creator_email'] = 'valentin.louf@bom.gov.au'
     matchset.attrs['creator_name'] = 'Valentin Louf'
