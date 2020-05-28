@@ -195,7 +195,7 @@ def volume_matching(gpmfile,
 
     # Correct ground-radar elevation from the refraction:
     ecorr = corr_elev_refra(np.deg2rad(elev_gr))
-    elev_gr = elev_gr + np.rad2deg(ecorr)
+    elev_gr = elev_gr - np.rad2deg(ecorr)
 
     rmax_gr = range_gr.max()
     dr = range_gr[1] - range_gr[0]
