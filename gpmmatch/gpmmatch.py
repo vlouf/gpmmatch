@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 26/05/2020
+@date: 28/05/2020
     _mkdir
     check_beamwidth
     get_offset
@@ -50,6 +50,30 @@ def _mkdir(dir):
     return None
 
 
+def corr_elev_refra(theta, n0=1.0004, k=4/3):
+    '''
+    Atmospheric refraction correction.
+
+    Parameters:
+    ===========
+    theta: float
+        Elevation angle
+    n0: float
+        Reflective index of air.
+    k: float
+        4/3 earth’s radius model (Doviak and Zrnic)
+
+    Returns:
+    ========
+    refra: float
+        Refraction corrected elevation angle.
+    '''
+    refra = ((k - 1) / (2 * k - 1) * np.cos(theta)
+            * (np.sqrt(np.sin(theta) ** 2 + (4 * k - 2) / (k - 1) * (n0 - 1))
+            - np.sin(theta)))
+    return refra
+
+
 def get_offset(matchset, loose=False) -> float:
     '''
     Compute the Offset between GR and GPM. It will try to compute the mode of
@@ -72,7 +96,6 @@ def get_offset(matchset, loose=False) -> float:
     refl_gr = matchset.refl_gr_weigthed.values
     std_refl_gpm = matchset.std_refl_gpm.values
     std_refl_gr = matchset.std_refl_gr.values
-    r = matchset.r.values
 
     if loose:
         pos = ((~np.isnan(refl_gpm)) &
