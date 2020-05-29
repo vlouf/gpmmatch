@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 25/05/2020
+@date: 29/05/2020
 
     NoPrecipitationError
     _read_radar
@@ -342,7 +342,7 @@ def get_ground_radar_attributes(grfile):
     radar = _read_radar(grfile, None)
 
     rmax = radar.range['data'].max()
-    rmin = 20e3
+    rmin = 15e3
     grlon = radar.longitude['data'][0]
     grlat = radar.latitude['data'][0]
     gralt = radar.altitude['data'][0]

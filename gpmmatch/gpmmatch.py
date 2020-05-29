@@ -131,6 +131,7 @@ def volume_matching(gpmfile,
                     grfile2=None,
                     gr_offset=0,
                     gr_beamwidth=1,
+                    gr_rmax=None,
                     gr_refl_threshold=10,
                     radar_band='C',
                     refl_name='corrected_reflectivity',
@@ -151,6 +152,8 @@ def volume_matching(gpmfile,
         Offset to add to the reflectivity of the ground radar data.
     gr_beamwidth: float
         Ground radar 3dB-beamwidth.
+    gr_rmax: float
+        Ground radar maximum range in meters (100,000 m).
     gr_refl_thresold: float
         Minimum reflectivity threshold on ground radar data.
     radar_band: str
@@ -187,6 +190,10 @@ def volume_matching(gpmfile,
 
     # Extract ground radar data.
     range_gr = radar.range['data']
+    dr = range_gr[1] - range_gr[0]
+    if gr_rmax is None:
+        gr_rmax = range_gr()
+
     elev_gr = np.unique(radar.elevation['data'])
     xradar = radar.gate_x['data']
     yradar = radar.gate_y['data']
@@ -196,9 +203,6 @@ def volume_matching(gpmfile,
     # Correct ground-radar elevation from the refraction:
     ecorr = corr_elev_refra(np.deg2rad(elev_gr))
     elev_gr = elev_gr - np.rad2deg(ecorr)
-
-    rmax_gr = range_gr.max()
-    dr = range_gr[1] - range_gr[0]
 
     R, _ = np.meshgrid(radar.range['data'], radar.azimuth['data'])
     _, DT = np.meshgrid(radar.range['data'], deltat)
@@ -273,7 +277,7 @@ def volume_matching(gpmfile,
         ds[ii, jj] = np.deg2rad(gpmset.beamwidth) * np.mean((gpmset.altitude - zsat[ii, epos])) / np.cos(np.deg2rad(alpha[ii]))  # Width of layer
         r[ii, jj] = (gpmset.earth_gaussian_radius + zsat[ii, jj]) * np.sin(s_sat[ii, jj] / gpmset.earth_gaussian_radius) / np.cos(np.deg2rad(elev_gr[jj]))
 
-        if r[ii, jj] + ds[ii, jj] / 2 > rmax_gr:
+        if r[ii, jj] + ds[ii, jj] / 2 > gr_rmax:
             # More than half the sample is outside of the radar last bin.
             continue
 
@@ -403,6 +407,7 @@ def vmatch_multi_pass(gpmfile,
                       grfile2=None,
                       gr_offset=0,
                       gr_beamwidth=1,
+                      gr_rmax=None,
                       gr_refl_threshold=10,
                       radar_band='C',
                       refl_name='corrected_reflectivity',
@@ -424,6 +429,8 @@ def vmatch_multi_pass(gpmfile,
         Offset to add to the reflectivity of the ground radar data.
     gr_beamwidth: float
         Ground radar 3dB-beamwidth.
+    gr_rmax: float
+        Ground radar maximum range in meters (100,000 m).
     gr_refl_thresold: float
         Minimum reflectivity threshold on ground radar data.
     radar_band: str
@@ -474,6 +481,7 @@ def vmatch_multi_pass(gpmfile,
                                    refl_name=refl_name,
                                    fname_prefix=fname_prefix,
                                    gr_beamwidth=gr_beamwidth,
+                                   gr_rmax=gr_rmax,
                                    gr_refl_threshold=gr_refl_threshold,
                                    is_loose_offset=is_loose_offset)
     pass_offset = matchset.attrs['offset_found']
@@ -502,6 +510,7 @@ def vmatch_multi_pass(gpmfile,
                                            refl_name=refl_name,
                                            fname_prefix=fname_prefix,
                                            gr_beamwidth=gr_beamwidth,
+                                           gr_rmax=gr_rmax,
                                            gr_refl_threshold=gr_refl_threshold,
                                            is_loose_offset=is_loose_offset)
 
