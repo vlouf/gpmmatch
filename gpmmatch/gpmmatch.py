@@ -192,7 +192,7 @@ def volume_matching(gpmfile,
     range_gr = radar.range['data']
     dr = range_gr[1] - range_gr[0]
     if gr_rmax is None:
-        gr_rmax = range_gr()
+        gr_rmax = range_gr.max()
 
     elev_gr = np.unique(radar.elevation['data'])
     xradar = radar.gate_x['data']
