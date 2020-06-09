@@ -96,15 +96,15 @@ def get_offset(matchset, dr) -> float:
     std_refl_gpm = matchset.std_refl_gpm.values
     std_refl_gr = matchset.std_refl_gr.values
     sample_gr = matchset['sample_gr'].values
-    
+
     dr_thld = (25, 90)
     if dr == 500:
         dr_thld = (10, 90)
     elif dr == 1000:
         dr_thld = (5, 90)
 
-    pos = ((std_refl_gpm > 0.2) # & (std_refl_gpm < 5) &
-           (std_refl_gr > 0) # & (std_refl_gr < 5) &
+    pos = ((std_refl_gpm > 0.2) & # (std_refl_gpm < 5) &
+           (std_refl_gr > 0) & # (std_refl_gr < 5) &
            (sample_gr > dr_thld[0]) &
            (sample_gr < dr_thld[1]) &
            (np.abs(refl_gpm - refl_gr) < 15) &
