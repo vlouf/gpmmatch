@@ -96,8 +96,7 @@ def get_offset(matchset, dr) -> float:
     std_refl_gpm = matchset.std_refl_gpm.values
     std_refl_gr = matchset.std_refl_gr.values
     sample_gr = matchset['sample_gr'].values
-
-    dr = matchset.radar_range_res
+    
     dr_thld = (25, 90)
     if dr == 500:
         dr_thld = (10, 90)
