@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 29/05/2020
+@date: 09/06/2020
     _mkdir
     check_beamwidth
     get_offset
@@ -74,7 +74,7 @@ def corr_elev_refra(theta, n0=1.0004, k=4/3):
     return refra
 
 
-def get_offset(matchset, loose=False) -> float:
+def get_offset(matchset, dr) -> float:
     '''
     Compute the Offset between GR and GPM. It will try to compute the mode of
     the distribution and if it fails, then it will use the mean.
@@ -83,9 +83,8 @@ def get_offset(matchset, loose=False) -> float:
     ==========
     matchset: xr.Dataset
         Dataset of volume matching.
-    loose: bool
-        Use of STD to constrain the offset calculation. Better quality if false
-        but less likely to find a solution.
+    dr: int
+        Ground radar gate spacing (m).
 
     Returns:
     ========
@@ -96,20 +95,24 @@ def get_offset(matchset, loose=False) -> float:
     refl_gr = matchset.refl_gr_weigthed.values
     std_refl_gpm = matchset.std_refl_gpm.values
     std_refl_gr = matchset.std_refl_gr.values
+    sample_gr = matchset['sample_gr'].values
 
-    if loose:
-        pos = ((~np.isnan(refl_gpm)) &
-               (~np.isnan(refl_gr)) &
-               (refl_gr >= 21) &
-               (refl_gr <= 36))
-    else:
-        pos = ((std_refl_gpm > 0.2) & (std_refl_gpm < 5) &
-               (std_refl_gr > 0) & (std_refl_gr < 5) &
-               (np.abs(refl_gpm - refl_gr) < 15) &
-               (~np.isnan(refl_gpm)) &
-               (~np.isnan(refl_gr)) &
-               (refl_gr >= 21) &
-               (refl_gr <= 36))
+    dr = matchset.radar_range_res
+    dr_thld = (25, 90)
+    if dr == 500:
+        dr_thld = (10, 90)
+    elif dr == 1000:
+        dr_thld = (5, 90)
+
+    pos = ((std_refl_gpm > 0.2) # & (std_refl_gpm < 5) &
+           (std_refl_gr > 0) # & (std_refl_gr < 5) &
+           (sample_gr > dr_thld[0]) &
+           (sample_gr < dr_thld[1]) &
+           (np.abs(refl_gpm - refl_gr) < 15) &
+           (~np.isnan(refl_gpm)) &
+           (~np.isnan(refl_gr)) &
+           (refl_gr >= 21) &
+           (refl_gr <= 36))
 
     x1 = refl_gpm[pos]
     x2 = refl_gr[pos]
@@ -135,8 +138,7 @@ def volume_matching(gpmfile,
                     gr_refl_threshold=10,
                     radar_band='C',
                     refl_name='corrected_reflectivity',
-                    fname_prefix=None,
-                    is_loose_offset=False):
+                    fname_prefix=None):
     '''
     Performs the volume matching of GPM satellite data to ground based radar.
 
@@ -162,9 +164,6 @@ def volume_matching(gpmfile,
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
-    is_loose_offset: bool
-        Computing offset using the strict way or a less accurate way (but with
-        a higher likelyhood to yield a result).
 
     Returns:
     --------
@@ -360,7 +359,8 @@ def volume_matching(gpmfile,
     iscan, _, _ = np.where(ar == ar.min())
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
-    offset = get_offset(matchset, is_loose_offset)
+    dr = int(radar.range['data'][1] - radar.range['data'][0])
+    offset = get_offset(matchset, dr)
 
     radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
     radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
@@ -378,7 +378,7 @@ def volume_matching(gpmfile,
     matchset.attrs['radar_end_time'] = radar_end_time
     matchset.attrs['radar_longitude'] = radar.longitude['data'][0]
     matchset.attrs['radar_latitude'] = radar.latitude['data'][0]
-    matchset.attrs['radar_range_res'] = radar.range['data'][1] - radar.range['data'][0]
+    matchset.attrs['radar_range_res'] = dr
     matchset.attrs['radar_beamwidth'] = gr_beamwidth
     matchset.attrs['country'] = 'Australia'
     matchset.attrs['creator_email'] = 'valentin.louf@bom.gov.au'
@@ -412,8 +412,7 @@ def vmatch_multi_pass(gpmfile,
                       radar_band='C',
                       refl_name='corrected_reflectivity',
                       fname_prefix=None,
-                      output_dir=None,
-                      is_loose_offset=False):
+                      output_dir=None):
     '''
     Multi-pass volume matching with automatic offset computation.
 
@@ -441,9 +440,6 @@ def vmatch_multi_pass(gpmfile,
         Name of the ground radar to use as label for the output file.
     output_dir: str
         Path to output directory.
-    is_loose_offset: bool
-        Computing offset using the strict way or a less accurate way (but with
-        a higher likelyhood to yield a result).
     '''
     def _save(dset, output_directory):
         '''
@@ -482,8 +478,7 @@ def vmatch_multi_pass(gpmfile,
                                    fname_prefix=fname_prefix,
                                    gr_beamwidth=gr_beamwidth,
                                    gr_rmax=gr_rmax,
-                                   gr_refl_threshold=gr_refl_threshold,
-                                   is_loose_offset=is_loose_offset)
+                                   gr_refl_threshold=gr_refl_threshold)
     pass_offset = matchset.attrs['offset_found']
     gr_offset = pass_offset
 
@@ -511,8 +506,7 @@ def vmatch_multi_pass(gpmfile,
                                            fname_prefix=fname_prefix,
                                            gr_beamwidth=gr_beamwidth,
                                            gr_rmax=gr_rmax,
-                                           gr_refl_threshold=gr_refl_threshold,
-                                           is_loose_offset=is_loose_offset)
+                                           gr_refl_threshold=gr_refl_threshold)
 
         # Save intermediary file.
         _save(new_matchset, output_dir_inter_pass)
