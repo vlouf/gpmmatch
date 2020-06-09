@@ -201,7 +201,7 @@ def volume_matching(gpmfile,
 
     # Correct ground-radar elevation from the refraction:
     ecorr = corr_elev_refra(np.deg2rad(elev_gr))
-    elev_gr = elev_gr - np.rad2deg(ecorr)
+    elev_gr = elev_gr + np.rad2deg(ecorr)
 
     R, _ = np.meshgrid(radar.range['data'], radar.azimuth['data'])
     _, DT = np.meshgrid(radar.range['data'], deltat)
