@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 25/05/2020
+@date: 09/06/2020
     _mkdir
     remove
     get_radar_archive_file
@@ -227,7 +227,7 @@ def buffer(gpmfile, date, rid):
 
     try:
         refl_name = check_reflectivity_field_name(grfile)
-    except KeyError:        
+    except KeyError:
         traceback.print_exc()
         return None
 
@@ -239,8 +239,7 @@ def buffer(gpmfile, date, rid):
                                        refl_name=refl_name,
                                        fname_prefix=rid,
                                        gr_refl_threshold=GR_THLD,
-                                       output_dir=OUTPATH,
-                                       is_loose_offset=IS_LOOSE_OFFSET)
+                                       output_dir=OUTPATH)
     except NoRainError:
         pass
     except Exception:
@@ -274,6 +273,8 @@ def main():
 
 
 if __name__ == "__main__":
+    CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
+
      # Parse arguments
     parser_description = """GPM volume matching on the National archive data."""
     parser = argparse.ArgumentParser(description=parser_description)
@@ -297,29 +298,16 @@ if __name__ == "__main__":
         dest='grthld',
         type=float,
         help='Ground radar reflectivity threshold.',
-        required=True)    
-
-    parser.add_argument('--loose',
-                        dest='loose_offset',
-                        action='store_true',
-                        help='Use a loose method to compute the offset (More results but less confidence).',)
-    parser.add_argument('--no-loose',
-                        dest='loose_offset',
-                        action='store_false',
-                        help='Use a strict method to compute the offset (Higher confidence but less results).',)
-    parser.set_defaults(loose_offset=False)
+        required=True)
 
     args = parser.parse_args()
     RID = args.rid
     GR_THLD = args.grthld
-    IS_LOOSE_OFFSET = args.loose_offset    
 
     if args.outdir is None:
         OUTPATH = os.path.join(os.getcwd(), f'{RID}')
     else:
         OUTPATH = os.path.join(args.outdir, f'{RID}')
     _mkdir(OUTPATH)
-
-    CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
 
     main()
