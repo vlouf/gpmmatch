@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 09/06/2020
+@date: 10/06/2020
     _mkdir
     check_beamwidth
     get_offset
@@ -28,6 +28,7 @@ from scipy.stats import mode
 
 from .io import data_load_and_checks, savedata
 from .default import get_metadata
+from . import correct
 
 
 class NoRainError(Exception):
@@ -48,30 +49,6 @@ def _mkdir(dir):
         pass
 
     return None
-
-
-def corr_elev_refra(theta, n0=1.0004, k=4/3):
-    '''
-    Atmospheric refraction correction.
-
-    Parameters:
-    ===========
-    theta: float
-        Elevation angle
-    n0: float
-        Reflective index of air.
-    k: float
-        4/3 earth’s radius model (Doviak and Zrnic)
-
-    Returns:
-    ========
-    refra: float
-        Refraction corrected elevation angle.
-    '''
-    refra = ((k - 1) / (2 * k - 1) * np.cos(theta)
-            * (np.sqrt(np.sin(theta) ** 2 + (4 * k - 2) / (k - 1) * (n0 - 1))
-            - np.sin(theta)))
-    return refra
 
 
 def get_offset(matchset, dr) -> float:
@@ -199,8 +176,8 @@ def volume_matching(gpmfile,
     deltat = (tradar - gpmset.overpass_time.values)
 
     # Correct ground-radar elevation from the refraction:
-    ecorr = corr_elev_refra(np.deg2rad(elev_gr))
-    elev_gr = elev_gr + np.rad2deg(ecorr)
+    # Truth = Apparant - refraction angle cf. Holleman (2013)
+    elev_gr = elev_gr - correct.correct_refraction(elev_gr)
 
     R, _ = np.meshgrid(radar.range['data'], radar.azimuth['data'])
     _, DT = np.meshgrid(radar.range['data'], deltat)
