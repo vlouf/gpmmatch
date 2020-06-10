@@ -10,6 +10,7 @@ volume_matching.
 
     NoPrecipitationError
     _read_radar
+    _mkdir
     savedata
     get_gpm_orbit
     read_GPM
@@ -35,6 +36,22 @@ from . import default
 
 class NoPrecipitationError(Exception):
     pass
+
+
+def _mkdir(dir):
+    """
+    Make directory. Might seem redundant but you might have concurrency issue
+    when dealing with multiprocessing.
+    """
+    if os.path.exists(dir):
+        return None
+
+    try:
+        os.mkdir(dir)
+    except FileExistsError:
+        pass
+
+    return None
 
 
 def _read_radar(infile, refl_name=None):

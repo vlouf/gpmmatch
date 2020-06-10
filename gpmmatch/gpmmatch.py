@@ -7,7 +7,6 @@ latest version of TRMM data.
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
 @date: 10/06/2020
-    _mkdir
     check_beamwidth
     get_offset
     volume_matching
@@ -23,32 +22,17 @@ import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
-
 from scipy.stats import mode
 
-from .io import data_load_and_checks, savedata
-from .default import get_metadata
 from . import correct
+from .io import data_load_and_checks
+from .io import savedata
+from .io import _mkdir
+from .default import get_metadata
 
 
 class NoRainError(Exception):
     pass
-
-
-def _mkdir(dir):
-    """
-    Make directory. Might seem redundant but you might have concurrency issue
-    when dealing with multiprocessing.
-    """
-    if os.path.exists(dir):
-        return None
-
-    try:
-        os.mkdir(dir)
-    except FileExistsError:
-        pass
-
-    return None
 
 
 def get_offset(matchset, dr) -> float:
