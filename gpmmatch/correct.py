@@ -114,7 +114,7 @@ def correct_parallax(sr_x, sr_y, gpmset):
 
 def correct_refraction(elevation: float, 
                        n0: float=1.000313, 
-                       k: float=4/3) -> float:
+                       k: float=5/4) -> float:
     '''
     Atmospheric refraction correction. Eq. 9 and 10 from Holleman and 
     Huuskonen (2013), doi:10.1002/rds.20030.
