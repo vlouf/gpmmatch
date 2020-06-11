@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 10/06/2020
+@date: 11/06/2020
     check_beamwidth
     get_offset
     volume_matching
@@ -244,16 +244,21 @@ def volume_matching(gpmfile,
         sl = radar.get_slice(jj)
         roi_gr_at_vol = np.sqrt((xradar[sl] - x[ii, jj]) ** 2 + (yradar[sl] - y[ii, jj]) ** 2)
         rpos = (roi_gr_at_vol <= ds[ii, jj] / 2)
-        w = volgr[sl][rpos] * np.exp(-(roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2)
         if np.sum(rpos) == 0:
             continue
+
+        w = volgr[sl][rpos] * np.exp(-(roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2)
 
         # Extract reflectivity for volume.
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
         refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
         refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()
         zrefl_gr_raw = 10 ** (refl_gr_raw / 10)
-        delta_t[ii, jj] = np.max(DT[sl][rpos])
+        try:
+            delta_t[ii, jj] = np.max(DT[sl][rpos])
+        except ValueError:
+            # There's no data in the radar domain.
+            continue
 
         if np.all(np.isnan(refl_gpm.filled(np.NaN))):
             continue
