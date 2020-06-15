@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 11/06/2020
+@date: 15/06/2020
     check_beamwidth
     get_offset
     volume_matching
@@ -424,12 +424,10 @@ def vmatch_multi_pass(gpmfile,
         output_dir = os.getcwd()
 
     # Generate output directories.
-    output_dir_first_pass = os.path.join(output_dir, 'first_pass')
-    output_dir_final_pass = os.path.join(output_dir, 'final_pass')
-    output_dir_inter_pass = os.path.join(output_dir, 'inter_pass')
-    _mkdir(output_dir_first_pass)
-    _mkdir(output_dir_final_pass)
-    _mkdir(output_dir_inter_pass)
+    output_dirs = {'first': os.path.join(output_dir, 'first_pass'),
+                   'inter': os.path.join(output_dir, 'inter_pass'),
+                   'final': os.path.join(output_dir, 'final_pass')}
+    [_mkdir(v) for k, v in output_dirs.items()]
 
     # First pass
     with warnings.catch_warnings():
@@ -446,10 +444,9 @@ def vmatch_multi_pass(gpmfile,
                                    gr_refl_threshold=gr_refl_threshold)
     pass_offset = matchset.attrs['offset_found']
     gr_offset = pass_offset
-
     offset_keeping_track = [pass_offset]
     final_offset_keeping_track = [matchset.attrs['final_offset']]
-    _save(matchset, output_dir_first_pass)
+    _save(matchset, output_dirs['first'])
 
     if np.isnan(pass_offset):
         dtime = matchset.attrs['gpm_overpass_time']
@@ -472,9 +469,8 @@ def vmatch_multi_pass(gpmfile,
                                            gr_beamwidth=gr_beamwidth,
                                            gr_rmax=gr_rmax,
                                            gr_refl_threshold=gr_refl_threshold)
-
         # Save intermediary file.
-        _save(new_matchset, output_dir_inter_pass)
+        _save(new_matchset, output_dirs['inter'])
 
         # Check offset found.
         gr_offset = new_matchset.attrs['final_offset']
@@ -491,6 +487,5 @@ def vmatch_multi_pass(gpmfile,
             break
 
     # Save final iteration.
-    _save(matchset, output_dir_final_pass)
-
+    _save(matchset, output_dirs['final'])
     return None
