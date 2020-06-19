@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 09/06/2020
+@date: 19/06/2020
     _mkdir
     remove
     get_radar_archive_file
@@ -298,7 +298,7 @@ if __name__ == "__main__":
         dest='grthld',
         type=float,
         help='Ground radar reflectivity threshold.',
-        required=True)
+        default=14.0)
 
     args = parser.parse_args()
     RID = args.rid
