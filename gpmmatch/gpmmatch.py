@@ -35,7 +35,7 @@ class NoRainError(Exception):
     pass
 
 
-def get_offset(matchset, dr) -> float:
+def get_offset(matchset, dr, nbins=200) -> float:
     '''
     Compute the Offset between GR and GPM. It will try to compute the mode of
     the distribution and if it fails, then it will use the mean.
@@ -46,17 +46,18 @@ def get_offset(matchset, dr) -> float:
         Dataset of volume matching.
     dr: int
         Ground radar gate spacing (m).
+    nbins: int
+        Defines the number of equal-width bins in the distribution.
 
     Returns:
     ========
     offset: float
         Offset between GR and GPM
     '''
-    refl_gpm = matchset.refl_gpm_grband.values
-    refl_gr = matchset.refl_gr_weigthed.values
+    refl_gpm = matchset.refl_gpm_grband.values.flatten()
+    refl_gr = matchset.refl_gr_weigthed.values.flatten()
     offset = np.arange(-15, 15, .2)
-    area = np.zeros_like(offset)    
-    nbins = 200
+    area = np.zeros_like(offset)
     pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
     for idx, a in enumerate(offset):
         pdf_gr, _ = np.histogram(refl_gr  - a, range=[0, 50], bins=nbins, density=True)
@@ -65,7 +66,6 @@ def get_offset(matchset, dr) -> float:
 
     maxpos = np.argmax(area)
     gr_offset = offset[maxpos]
-
     return gr_offset
 
 
