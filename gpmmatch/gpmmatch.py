@@ -109,9 +109,7 @@ def volume_matching(gpmfile,
     --------
     matchset: xarray.Dataset
         Dataset containing the matched GPM and ground radar data.
-    '''
-    if gr_refl_threshold > 10:
-        warnings.warn('Tests have shown that the ideal ground radar reflectivity threshold is about 10 dB.', UserWarning)
+    '''    
     if fname_prefix is None:
         fname_prefix = 'unknown_radar'
 
