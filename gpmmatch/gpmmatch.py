@@ -181,8 +181,7 @@ def volume_matching(gpmfile,
 
     # Initialising output data.
     datakeys = ['refl_gpm_raw', 'refl_gr_weigthed', 'refl_gpm_grband', 'pir_gpm', 'pir_gr',
-                'refl_gr_raw', 'std_refl_gpm', 'std_refl_gr', 'zrefl_gpm_raw', 'zrefl_gr_weigthed',
-                'zrefl_gpm_grband', 'zrefl_gr_raw', 'std_zrefl_gpm', 'std_zrefl_gr', 'sample_gpm', 'reject_gpm',
+                'refl_gr_raw', 'std_refl_gpm', 'std_refl_gr', 'sample_gpm', 'reject_gpm',
                 'sample_gr', 'reject_gr', 'volume_match_gpm', 'volume_match_gr']
 
     data = dict()
@@ -232,8 +231,7 @@ def volume_matching(gpmfile,
         # Extract reflectivity for volume.
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
         refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
-        refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()
-        zrefl_gr_raw = 10 ** (refl_gr_raw / 10)
+        refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()        
         try:
             delta_t[ii, jj] = np.max(DT[sl][rpos])
         except ValueError:
@@ -255,9 +253,6 @@ def volume_matching(gpmfile,
         data['refl_gpm_grband'][ii, jj] = np.mean(refl_gpm_grband)
         data['pir_gpm'][ii, jj] = np.mean(pir_gpm[ii, epos].flatten())
         data['std_refl_gpm'][ii, jj] = np.std(refl_gpm)
-        data['zrefl_gpm_raw'][ii, jj] = 10 * np.log10(np.mean(10 ** (refl_gpm / 10)))
-        data['zrefl_gpm_grband'][ii, jj] = 10 * np.log10(np.mean(10 ** (refl_gpm_grband / 10)))
-        data['std_zrefl_gpm'][ii, jj] = 10 * np.log10(np.std(10 ** (refl_gpm / 10)))
         data['reject_gpm'][ii, jj] = np.sum(epos) - np.sum(refl_gpm.mask)  # Number of rejected bins
 
         # Ground radar.
@@ -265,10 +260,7 @@ def volume_matching(gpmfile,
         data['refl_gr_weigthed'][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
         data['refl_gr_raw'][ii, jj] = np.mean(refl_gr_raw)
         data['pir_gr'][ii, jj] = np.mean(pir_gr[sl][rpos].flatten())
-        data['zrefl_gr_weigthed'][ii, jj] = 10 * np.log10(np.sum(w * zrefl_gr_raw) / np.sum(w[~refl_gr_raw.mask]))
-        data['zrefl_gr_raw'][ii, jj] = 10 * np.log10(np.mean(zrefl_gr_raw))
         data['std_refl_gr'][ii, jj] = np.std(refl_gr_raw)
-        data['std_zrefl_gr'][ii, jj] = 10 * np.log10(np.std(10 ** (refl_gr_raw / 10)))
         data['reject_gr'][ii, jj] = np.sum(rpos)
         data['sample_gr'][ii, jj] = np.sum(~refl_gr_raw.mask)
 
