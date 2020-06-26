@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 20/06/2020
+@date: 26/06/2020
     check_beamwidth
     get_offset
     volume_matching
@@ -109,7 +109,7 @@ def volume_matching(gpmfile,
     --------
     matchset: xarray.Dataset
         Dataset containing the matched GPM and ground radar data.
-    '''    
+    '''
     if fname_prefix is None:
         fname_prefix = 'unknown_radar'
 
@@ -229,21 +229,23 @@ def volume_matching(gpmfile,
         # Extract reflectivity for volume.
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
         refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
-        refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()        
+        refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()
         try:
             delta_t[ii, jj] = np.max(DT[sl][rpos])
         except ValueError:
             # There's no data in the radar domain.
             continue
 
+        if len(refl_gpm) < 5 or len(refl_gr_raw) < 5:
+            continue
         if np.all(np.isnan(refl_gpm.filled(np.NaN))):
             continue
         if np.all(np.isnan(refl_gr_raw.filled(np.NaN))):
             continue
-        if np.sum(refl_gpm > 0) / np.sum(~np.isnan(refl_gpm)) < 0.7:
+        if np.sum(refl_gpm > 0) / len(refl_gpm) < 0.95:
             # fmin parameter (Fig 5 Rob's paper).
             continue
-        if np.sum(refl_gr_raw >= gr_refl_threshold) / np.sum(~np.isnan(refl_gr_raw)) < 0.7:
+        if np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw) < 0.95:
             continue
 
         # GPM
@@ -270,6 +272,9 @@ def volume_matching(gpmfile,
     data['ntilt'] = np.arange(ntilt, dtype=np.int32)
     data['elevation_gr'] = elev_gr[:ntilt]
     data['timedelta'] = delta_t
+
+    if np.sum(~np.isnan(data['refl_gpm_raw'])) < 25:
+        raise NoRainError('At least 25 sample points are required.')
 
     # Transform to xarray and build metadata
     match = dict()
