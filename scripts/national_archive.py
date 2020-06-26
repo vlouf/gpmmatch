@@ -298,7 +298,7 @@ if __name__ == "__main__":
         dest='grthld',
         type=float,
         help='Ground radar reflectivity threshold.',
-        default=14.0)
+        default=10)
 
     args = parser.parse_args()
     RID = args.rid
