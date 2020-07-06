@@ -15,26 +15,18 @@ EMAIL = "valentin.louf@bom.gov.au"
 AUTHOR = "Valentin Louf"
 
 # What packages are required for this module to be executed?
-REQUIRED = [
-    "arm_pyart",
-    "numpy",
-    "netCDF4",
-    "h5py",
-    "pyproj",
-    "xarray",
-    "pandas",
-    "scipy",
-]
-
-# The rest you shouldn't have to touch too much :)
-# ------------------------------------------------
-# Except, perhaps the License and Trove Classifiers!
-# If you do change the License, remember to change the Trove Classifier for that!
+REQUIRED = ['arm_pyart',
+            'cftime',
+            'dask',
+            'h5py',
+            'netCDF4',
+            'numpy',
+            'pandas',
+            'pyproj',
+            'scipy',
+            'xarray']
 
 here = os.path.abspath(os.path.dirname(__file__))
-
-# Import the README and use it as the long-description.
-# Note: this will only work if 'README.rst' is present in your MANIFEST.in file!
 with io.open(os.path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
 
@@ -75,7 +67,7 @@ class PublishCommand(Command):
 # Where the magic happens:
 setup(
     name=NAME,
-    version="1.0.0",
+    version="1.1.0",
     description=DESCRIPTION,
     long_description=long_description,
     author=AUTHOR,
