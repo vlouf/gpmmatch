@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 19/06/2020
+@date: 06/07/2020
     _mkdir
     remove
     get_radar_archive_file
@@ -238,6 +238,7 @@ def buffer(gpmfile, date, rid):
                                        radar_band=band,
                                        refl_name=refl_name,
                                        fname_prefix=rid,
+                                       gr_offset=GR_OFFSET,
                                        gr_refl_threshold=GR_THLD,
                                        output_dir=OUTPATH)
     except NoRainError:
@@ -299,10 +300,18 @@ if __name__ == "__main__":
         type=float,
         help='Ground radar reflectivity threshold.',
         default=10)
+    parser.add_argument(
+        '-f',
+        '--offset',
+        dest='offset',
+        type=float,
+        help='Ground radar reflectivity offset to substract Z1=Z0-o.',
+        default=0)
 
     args = parser.parse_args()
     RID = args.rid
     GR_THLD = args.grthld
+    GR_OFFSET = args.offset
 
     if args.outdir is None:
         OUTPATH = os.path.join(os.getcwd(), f'{RID}')
