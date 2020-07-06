@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 29/05/2020
+@date: 06/07/2020
 
     NoPrecipitationError
     _read_radar
@@ -111,7 +111,7 @@ def savedata(matchset, output_dir, outfilename):
     return None
 
 
-def get_gpm_orbit(gpmfile):
+def get_gpm_orbit(gpmfile: str) -> int:
     '''
     Parameters:
     -----------
@@ -333,7 +333,7 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
     return radar0
 
 
-def get_ground_radar_attributes(grfile):
+def get_ground_radar_attributes(grfile: str) -> (float, float, float, float):
     '''
     Read the ground radar attributes, latitude/longitude, altitude, range
     min/max.

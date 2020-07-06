@@ -5,14 +5,13 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 24/02/2020
-@date: 20/05/2020
+@date: 06/07/2020
 
     load_national_archive_info
     gpmset_metadata
     get_metadata
 """
 import os
-
 import pandas as pd
 
 
@@ -33,7 +32,7 @@ def load_national_archive_info():
     return df
 
 
-def gpmset_metadata():
+def gpmset_metadata() -> dict:
     """
     Return a bunch of metadata (description, units, long_name, etc.) for the
     gpmset.
@@ -75,7 +74,7 @@ def gpmset_metadata():
     return metadata
 
 
-def get_metadata():
+def get_metadata() -> dict:
     """
     Return a bunch of metadata (description, units, long_name, etc.) for the
     output dataset.
