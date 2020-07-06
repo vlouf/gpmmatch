@@ -6,8 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 03/07/2020    
-    get_offset
+@date: 06/07/2020
     volume_matching
     vmatch_multi_pass
 '''
@@ -21,9 +20,9 @@ import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
-from scipy.stats import mode
 
 from . import correct
+from .correct import get_offset
 from .io import data_load_and_checks
 from .io import savedata
 from .io import _mkdir
@@ -32,94 +31,6 @@ from .default import get_metadata
 
 class NoRainError(Exception):
     pass
-
-
-def get_offset(matchset, dr, nbins=200) -> float:
-    '''
-    Compute the Offset between GR and GPM. It will try to compute the mode of
-    the distribution and if it fails, then it will use the mean.
-
-    Parameter:
-    ==========
-    matchset: xr.Dataset
-        Dataset of volume matching.
-    dr: int
-        Ground radar gate spacing (m).
-    nbins: int
-        Defines the number of equal-width bins in the distribution.
-
-    Returns:
-    ========
-    offset: float
-        Offset between GR and GPM
-    '''
-    refl_gpm = matchset.refl_gpm_grband.values.flatten()
-    refl_gr = matchset.refl_gr_weigthed.values.flatten()
-    offset = np.arange(-15, 15, .2)
-    area = np.zeros_like(offset)
-    pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
-    for idx, a in enumerate(offset):
-        pdf_gr, _ = np.histogram(refl_gr  - a, range=[0, 50], bins=nbins, density=True)
-        diff = np.min([pdf_gr, pdf_gpm], axis=0)
-        area[idx] = np.sum(diff)
-
-    maxpos = np.argmax(area)
-    gr_offset = offset[maxpos]
-    return gr_offset
-
-
-# def get_offset(matchset, dr) -> float:
-#     '''
-#     Compute the Offset between GR and GPM. It will try to compute the mode of
-#     the distribution and if it fails, then it will use the mean.
-
-#     Parameter:
-#     ==========
-#     matchset: xr.Dataset
-#         Dataset of volume matching.
-#     dr: int
-#         Ground radar gate spacing (m).
-
-#     Returns:
-#     ========
-#     offset: float
-#         Offset between GR and GPM
-#     '''
-#     refl_gpm = matchset.refl_gpm_grband.values
-#     refl_gr = matchset.refl_gr_weigthed.values
-#     std_refl_gpm = matchset.std_refl_gpm.values
-#     std_refl_gr = matchset.std_refl_gr.values
-#     sample_gr = matchset['sample_gr'].values
-
-#     dr_thld = (25, 90)
-#     if dr == 500:
-#         dr_thld = (10, 90)
-#     elif dr == 1000:
-#         dr_thld = (5, 90)
-
-#     pos = ((std_refl_gpm > 0.2) & # (std_refl_gpm < 5) &
-#            (std_refl_gr > 0) & # (std_refl_gr < 5) &
-#            (sample_gr > dr_thld[0]) &
-#            (sample_gr < dr_thld[1]) &
-#            (np.abs(refl_gpm - refl_gr) < 15) &
-#            (~np.isnan(refl_gpm)) &
-#            (~np.isnan(refl_gr)) &
-#            (refl_gr >= 21) &
-#            (refl_gr <= 36))
-
-#     x1 = refl_gpm[pos]
-#     x2 = refl_gr[pos]
-#     deltax = (x2 - x1)
-#     deltax = deltax[~np.isnan(deltax)]
-
-#     m, _ = mode(np.round(deltax * 2) / 2, nan_policy='omit')
-#     try:
-#         npos = ((deltax < m[0] + deltax.std()) & (deltax > m[0] - deltax.std()))
-#         offset = deltax[npos].mean()
-#     except Exception:
-#         offset = np.mean(deltax)
-
-#     return offset
 
 
 def volume_matching(gpmfile,
@@ -296,7 +207,6 @@ def volume_matching(gpmfile,
         if np.all(np.isnan(refl_gr_raw.filled(np.NaN))):
             continue
         if np.sum(refl_gpm > 0) / len(refl_gpm) < 0.95:
-            # fmin parameter (Fig 5 Rob's paper).
             continue
         if np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw) < 0.95:
             continue
