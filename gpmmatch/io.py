@@ -466,10 +466,7 @@ def data_load_and_checks(gpmfile,
     # Time to read the ground radar data.
     radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
     if radar_band in ['X', 'C']:  # Correct attenuation of X or C bands.
-        if radar_band == 'X':
-            corr_refl = correct.correct_xband_attenuation(radar.fields[refl_name]['data'])
-        elif radar_band == 'C':
-            corr_refl = correct.correct_cband_attenuation(radar.fields[refl_name]['data'])
+        corr_refl = correct.correct_attenuation(radar.fields[refl_name]['data'], radar_band)
         refl_dict = radar.fields.pop(refl_name)
         refl_dict['data'] = corr_refl
         radar.add_field(refl_name, refl_dict)

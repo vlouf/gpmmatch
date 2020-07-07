@@ -19,6 +19,35 @@ import numpy as np
 from scipy.stats import mode
 
 
+def correct_attenuation(reflectivity, radar_band):
+    '''
+    Correct from C- or X-Band attenuation using a Z-A relationship derived from
+    T-matrix calculations using the Meteor disdrometer.
+
+    Parameters:
+    ===========
+    reflectivity: ndarray
+        Input attenuated reflectivity
+
+    Returns:
+    ========
+    corr_refl: ndarray
+        Attenuation-corrected reflectivity.
+    '''
+    if radar_band == 'X':
+        ze = 10 ** (reflectivity / 10)
+        atten = 3.30240183e-6 * ze + 9.67774379e-2
+    elif radar_band == 'C':
+        ze = 10 ** (reflectivity / 10)
+        atten = 3.30240183e-6 * ze + 9.67774379e-2
+    else:
+        # Doesnt correct.
+        return reflectivity
+
+    corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
+    return corr_refl
+
+
 def correct_xband_attenuation(reflectivity):
     '''
     Correct from X-Band attenuation using a Z-A relationship derived from
@@ -34,8 +63,7 @@ def correct_xband_attenuation(reflectivity):
     corr_refl: ndarray
         Attenuation-corrected reflectivity.
     '''
-    ze = 10 ** (reflectivity / 10)
-    atten = 3.30240183e-6 * ze + 9.67774379e-2
+
     corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
     return corr_refl
 
