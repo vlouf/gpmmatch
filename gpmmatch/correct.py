@@ -6,8 +6,7 @@ Various utilities for correction and conversion of satellite data.
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
 @date: 07/07/2020
-    correct_xband_attenuation
-    correct_cband_attenuation
+    correct_attenuation
     correct_parallax
     correct_refraction
     convert_sat_refl_to_gr_band
@@ -44,48 +43,6 @@ def correct_attenuation(reflectivity, radar_band):
         # Doesnt correct.
         return reflectivity
 
-    corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
-    return corr_refl
-
-
-def correct_xband_attenuation(reflectivity):
-    '''
-    Correct from X-Band attenuation using a Z-A relationship derived from
-    T-matrix calculations using the Meteor disdrometer.
-
-    Parameters:
-    ===========
-    reflectivity: ndarray
-        Input X-band uncorrected reflectivity
-
-    Returns:
-    ========
-    corr_refl: ndarray
-        Attenuation-corrected reflectivity.
-    '''
-
-    corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
-    return corr_refl
-
-
-def correct_cband_attenuation(reflectivity):
-    '''
-    Correct from C-Band attenuation using a Z-A relationship derived from
-    T-matrix calculations using the Darwin disdrometer.
-
-    Parameters:
-    ===========
-    reflectivity: ndarray
-        Input C-band uncorrected reflectivity
-
-    Returns:
-    ========
-    corr_refl: ndarray
-        Attenuation-corrected reflectivity.
-    '''
-    ze = 10 ** (reflectivity / 10)
-    # T-matrix relationship found with TWP Darwin disdrometer.
-    atten = 1.31885e-6 * ze + 1.8041e-3
     corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
     return corr_refl
 
