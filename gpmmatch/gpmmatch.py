@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 09/07/2020
+@date: 10/07/2020
     volume_matching
     vmatch_multi_pass
 '''
@@ -100,10 +100,6 @@ def volume_matching(gpmfile,
     yradar = radar.gate_y['data']
     tradar = cftime.num2pydate(radar.time['data'], radar.time['units']).astype('datetime64')
     deltat = (tradar - gpmset.overpass_time.values)
-
-    # Correct ground-radar elevation from the refraction:
-    # Truth = Apparant - refraction angle cf. Holleman (2013)
-    # elev_gr = elev_gr - correct.correct_refraction(elev_gr)
 
     R, _ = np.meshgrid(radar.range['data'], radar.azimuth['data'])
     _, DT = np.meshgrid(radar.range['data'], deltat)
