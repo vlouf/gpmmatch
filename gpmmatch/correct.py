@@ -5,7 +5,7 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 07/07/2020
+@date: 09/07/2020
     correct_attenuation
     correct_parallax
     correct_refraction
@@ -208,7 +208,7 @@ def get_offset(matchset, dr, nbins=200) -> float:
     '''
     refl_gpm = matchset.refl_gpm_grband.values.flatten()
     refl_gr = matchset.refl_gr_weigthed.values.flatten()
-    offset = np.arange(-15, 15, .2)
+    offset = np.arange(-15, 15, .2, dtype=np.float32)
     area = np.zeros_like(offset)
     pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
     for idx, a in enumerate(offset):
