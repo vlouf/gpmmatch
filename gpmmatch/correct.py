@@ -33,12 +33,11 @@ def correct_attenuation(reflectivity, radar_band):
     corr_refl: ndarray
         Attenuation-corrected reflectivity.
     '''
-    if radar_band == 'X':
-        ze = 10 ** (reflectivity / 10)
+    ze = 10 ** (reflectivity / 10)
+    if radar_band == 'X':        
         atten = 3.30240183e-6 * ze + 9.67774379e-2
     elif radar_band == 'C':
-        ze = 10 ** (reflectivity / 10)
-        atten = 3.30240183e-6 * ze + 9.67774379e-2
+        atten = 1.31885e-6 * ze + 1.8041e-3
     else:
         # Doesnt correct.
         return reflectivity
