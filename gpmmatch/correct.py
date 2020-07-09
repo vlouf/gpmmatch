@@ -5,7 +5,7 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 09/07/2020
+@date: 10/07/2020
     correct_attenuation
     correct_parallax
     correct_refraction
@@ -15,7 +15,6 @@ Various utilities for correction and conversion of satellite data.
     grid_displacement
 '''
 import numpy as np
-from scipy.stats import mode
 
 
 def correct_attenuation(reflectivity, radar_band):
@@ -34,7 +33,7 @@ def correct_attenuation(reflectivity, radar_band):
         Attenuation-corrected reflectivity.
     '''
     ze = 10 ** (reflectivity / 10)
-    if radar_band == 'X':        
+    if radar_band == 'X':
         atten = 3.30240183e-6 * ze + 9.67774379e-2
     elif radar_band == 'C':
         atten = 1.31885e-6 * ze + 1.8041e-3
@@ -205,8 +204,11 @@ def get_offset(matchset, dr, nbins=200) -> float:
     offset: float
         Offset between GR and GPM
     '''
-    refl_gpm = matchset.refl_gpm_grband.values.flatten()
-    refl_gr = matchset.refl_gr_weigthed.values.flatten()
+    refl_gpm = matchset.refl_gpm_grband.values.flatten().copy()
+    refl_gr = matchset.refl_gr_weigthed.values.flatten().copy()
+    pos = (refl_gpm > 36) | (refl_gr > 36)
+    refl_gpm[pos] = np.NaN
+    refl_gr[pos] = np.NaN
     offset = np.arange(-15, 15, .2)
     area = np.zeros_like(offset)
     pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
