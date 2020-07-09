@@ -392,37 +392,37 @@ def vmatch_multi_pass(gpmfile,
         return None
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
-    while (np.abs(pass_offset) > offset_thld) and (counter < 6):
-        offset_thld = 1
-        counter += 1
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            new_matchset = volume_matching(gpmfile,
-                                           grfile,
-                                           grfile2=grfile2,
-                                           gr_offset=gr_offset,
-                                           radar_band=radar_band,
-                                           refl_name=refl_name,
-                                           fname_prefix=fname_prefix,
-                                           gr_beamwidth=gr_beamwidth,
-                                           gr_rmax=gr_rmax,
-                                           gr_refl_threshold=gr_refl_threshold)
-        # Save intermediary file.
-        _save(new_matchset, output_dirs['inter'])
+    if np.abs(pass_offset) > offset_thld:
+        for counter in range(6):
+            offset_thld = 1
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                new_matchset = volume_matching(gpmfile,
+                                            grfile,
+                                            grfile2=grfile2,
+                                            gr_offset=gr_offset,
+                                            radar_band=radar_band,
+                                            refl_name=refl_name,
+                                            fname_prefix=fname_prefix,
+                                            gr_beamwidth=gr_beamwidth,
+                                            gr_rmax=gr_rmax,
+                                            gr_refl_threshold=gr_refl_threshold)
+            # Save intermediary file.
+            _save(new_matchset, output_dirs['inter'])
 
-        # Check offset found.
-        gr_offset = new_matchset.attrs['final_offset']
-        pass_offset = new_matchset.attrs['offset_found']
-        # if (np.abs(pass_offset) > np.abs(offset_keeping_track[-1])) or np.isnan(pass_offset):
-        #     # Solution converged already. Using previous iteration as final result.
-        #     counter -= 1
-        #     break
+            # Check offset found.
+            gr_offset = new_matchset.attrs['final_offset']
+            pass_offset = new_matchset.attrs['offset_found']
+            if (np.abs(pass_offset) > np.abs(offset_keeping_track[-1])) or np.isnan(pass_offset):
+                # Solution converged already. Using previous iteration as final result.
+                counter -= 1
+                break
 
-        matchset = new_matchset  # No error with results.
-        offset_keeping_track.append(pass_offset)
-        final_offset_keeping_track.append(gr_offset)
-        if np.abs(pass_offset) < offset_thld:
-            break
+            matchset = new_matchset  # No error with results.
+            offset_keeping_track.append(pass_offset)
+            final_offset_keeping_track.append(gr_offset)
+            if np.abs(pass_offset) < offset_thld:
+                break
 
     # Save final iteration.
     _save(matchset, output_dirs['final'])
