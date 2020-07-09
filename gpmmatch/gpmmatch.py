@@ -389,8 +389,7 @@ def vmatch_multi_pass(gpmfile,
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
     if np.abs(pass_offset) > offset_thld:
-        for counter in range(6):
-            offset_thld = 1
+        for counter in range(1, 6):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 new_matchset = volume_matching(gpmfile,
@@ -409,8 +408,12 @@ def vmatch_multi_pass(gpmfile,
             # Check offset found.
             gr_offset = new_matchset.attrs['final_offset']
             pass_offset = new_matchset.attrs['offset_found']
-            if (np.abs(pass_offset) > np.abs(offset_keeping_track[-1])) or np.isnan(pass_offset):
+            if np.isnan(pass_offset):
                 # Solution converged already. Using previous iteration as final result.
+                counter -= 1
+                break
+
+            if (np.abs(pass_offset) > np.abs(offset_keeping_track[-1])) and (counter > 1):
                 counter -= 1
                 break
 
