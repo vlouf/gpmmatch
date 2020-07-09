@@ -208,7 +208,7 @@ def get_offset(matchset, dr, nbins=200) -> float:
     '''
     refl_gpm = matchset.refl_gpm_grband.values.flatten()
     refl_gr = matchset.refl_gr_weigthed.values.flatten()
-    offset = np.arange(-15, 15, .2, dtype=np.float32)
+    offset = np.arange(-15, 15, .2)
     area = np.zeros_like(offset)
     pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
     for idx, a in enumerate(offset):

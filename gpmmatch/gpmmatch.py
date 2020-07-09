@@ -413,10 +413,10 @@ def vmatch_multi_pass(gpmfile,
         # Check offset found.
         gr_offset = new_matchset.attrs['final_offset']
         pass_offset = new_matchset.attrs['offset_found']
-        if (np.abs(pass_offset) > np.abs(offset_keeping_track[-1])) or np.isnan(pass_offset):
-            # Solution converged already. Using previous iteration as final result.
-            counter -= 1
-            break
+        # if (np.abs(pass_offset) > np.abs(offset_keeping_track[-1])) or np.isnan(pass_offset):
+        #     # Solution converged already. Using previous iteration as final result.
+        #     counter -= 1
+        #     break
 
         matchset = new_matchset  # No error with results.
         offset_keeping_track.append(pass_offset)
