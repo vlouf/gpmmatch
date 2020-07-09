@@ -392,7 +392,7 @@ def vmatch_multi_pass(gpmfile,
         return None
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
-    while (np.abs(pass_offset) > offset_thld) or (counter < 6):
+    while (np.abs(pass_offset) > offset_thld) and (counter < 6):
         offset_thld = 1
         counter += 1
         with warnings.catch_warnings():
