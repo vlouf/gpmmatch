@@ -217,7 +217,8 @@ def get_offset(matchset, dr, nbins=200) -> float:
         diff = np.min([pdf_gr, pdf_gpm], axis=0)
         area[idx] = np.sum(diff)
 
-    maxpos = np.argmax(area)
+    smoothed_area = np.convolve([1] * 12, area, 'same')
+    maxpos = np.argmax(smoothed_area)
     gr_offset = offset[maxpos]
     return gr_offset
 
