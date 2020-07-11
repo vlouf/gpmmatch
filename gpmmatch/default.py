@@ -5,7 +5,7 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 24/02/2020
-@date: 06/07/2020
+@date: 11/07/2020
 
     load_national_archive_info
     gpmset_metadata
@@ -113,41 +113,6 @@ def get_metadata() -> dict:
             "units": "dB",
             "long_name": "standard_deviation_reflectivity",
             "description": "Ground radar reflectivity standard deviation of the volume-matched sample.",
-        },
-        "zrefl_gpm_raw": {
-            "units": "dBZ",
-            "long_name": "GPM_reflectivity",
-            "description": "GPM reflectivity volume-matched to ground radar computed in linear units.",
-        },
-        "zrefl_gpm_strat": {
-            "units": "dBZ",
-            "long_name": "GPM_reflectivity_grband_stratiform",
-            "description": "GR-frequency band converted GPM reflectivity volume-matched to ground radar - stratiform approximation computed in linear units.",
-        },
-        "zrefl_gpm_conv": {
-            "units": "dBZ",
-            "long_name": "GPM_reflectivity_grband_convective",
-            "description": "GR-frequency band converted GPM reflectivity volume-matched to ground radar - convective approximation computed in linear units.",
-        },
-        "zrefl_gr_raw": {
-            "units": "dBZ",
-            "long_name": "reflectivity",
-            "description": "Ground radar reflectivity volume matched using a `normal` average computed in linear units.",
-        },
-        "zrefl_gr_weigthed": {
-            "units": "dBZ",
-            "long_name": "reflectivity",
-            "description": "Ground radar reflectivity volume matched using a distance-weighted average computed in linear units.",
-        },
-        "std_zrefl_gpm": {
-            "units": "dB",
-            "long_name": "standard_deviation_reflectivity",
-            "description": "GPM reflectivity standard deviation of the volume-matched sample computed in linear units.",
-        },
-        "std_zrefl_gr": {
-            "units": "dB",
-            "long_name": "standard_deviation_reflectivity",
-            "description": "Ground radar reflectivity standard deviation of the volume-matched sample computed in linear units.",
         },
         "sample_gpm": {
             "units": "1",
