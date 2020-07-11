@@ -4,8 +4,9 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 06/07/2020
+@date: 11/07/2020
     _mkdir
+    load_national_archive_info
     remove
     get_radar_archive_file
     get_radar_band
@@ -46,6 +47,23 @@ def _mkdir(dir: str):
         pass
 
     return None
+
+
+def load_national_archive_info():
+    """
+    Load Australian national archive informations as a Dataframe.
+
+    Returns:
+    ========
+    df: pandas.Dataframe
+        Dataframe containing general information about the Australian radar
+        Network (lat/lon, site name, frequency band and bandwith).
+    """
+    location = os.path.dirname(os.path.realpath(__file__))
+    myfile = os.path.join(location, "data", "radar_site_list.csv")
+    df = pd.read_csv(myfile).drop_duplicates("id", keep="last").reset_index()
+
+    return df
 
 
 def check_reflectivity_field_name(infile: str) -> str:
@@ -126,7 +144,7 @@ def get_radar_band(rid: int) -> str:
     band: str
         Radar frequency band ('S' or 'C')
     '''
-    df = gpmmatch.default.load_national_archive_info()
+    df = load_national_archive_info()
     pos = (df.id == int(rid))
     band = df.band[pos].values[0]
     if type(band) is not str:
@@ -149,7 +167,7 @@ def get_radar_beamwidth(rid: int) -> float:
     beamwidth: float
         Radar beamwidth.
     '''
-    df = gpmmatch.default.load_national_archive_info()
+    df = load_national_archive_info()
     pos = (df.id == int(rid))
     beamwidth = df.beamwidth[pos].values[0]
 
