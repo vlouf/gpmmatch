@@ -143,5 +143,4 @@ dmypy.json
 # Data directories
 test/
 notebooks/*/
-scripts/*/
 *_pass/
