@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 10/07/2020
+@date: 11/07/2020
     volume_matching
     vmatch_multi_pass
 '''
@@ -417,7 +417,8 @@ def vmatch_multi_pass(gpmfile,
                 counter -= 1
                 break
 
-            matchset = new_matchset  # No error with results.
+            # Pass results are good enough to continue.
+            matchset = new_matchset
             offset_keeping_track.append(pass_offset)
             final_offset_keeping_track.append(gr_offset)
             if np.abs(pass_offset) < offset_thld:
