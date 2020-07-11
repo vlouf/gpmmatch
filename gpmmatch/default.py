@@ -15,23 +15,6 @@ import os
 import pandas as pd
 
 
-def load_national_archive_info():
-    """
-    Load Australian national archive informations as a Dataframe.
-
-    Returns:
-    ========
-    df: pandas.Dataframe
-        Dataframe containing general information about the Australian radar
-        Network (lat/lon, site name, frequency band and bandwith).
-    """
-    location = os.path.dirname(os.path.realpath(__file__))
-    myfile = os.path.join(location, "data", "radar_site_list.csv")
-    df = pd.read_csv(myfile).drop_duplicates("id", keep="last").reset_index()
-
-    return df
-
-
 def gpmset_metadata() -> dict:
     """
     Return a bunch of metadata (description, units, long_name, etc.) for the
