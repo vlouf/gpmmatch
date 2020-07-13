@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 11/07/2020
+@date: 13/07/2020
     volume_matching
     vmatch_multi_pass
 '''
@@ -42,6 +42,7 @@ def volume_matching(gpmfile,
                     gr_refl_threshold=10,
                     radar_band='C',
                     refl_name='corrected_reflectivity',
+                    correct_attenuation=True,
                     fname_prefix=None):
     '''
     Performs the volume matching of GPM satellite data to ground based radar.
@@ -81,6 +82,7 @@ def volume_matching(gpmfile,
                                          grfile,
                                          grfile2=grfile2,
                                          refl_name=refl_name,
+                                         correct_attenuation=correct_attenuation,
                                          radar_band=radar_band)
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
@@ -311,6 +313,7 @@ def vmatch_multi_pass(gpmfile,
                       radar_band='C',
                       refl_name='corrected_reflectivity',
                       fname_prefix=None,
+                      correct_attenuation=True,
                       output_dir=None):
     '''
     Multi-pass volume matching with automatic offset computation.
