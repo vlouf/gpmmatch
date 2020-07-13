@@ -67,6 +67,8 @@ def volume_matching(gpmfile,
         Ground radar frequency band.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
+    correct_attenuation: bool
+        Should we correct for C- or X-band ground radar attenuation
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
 
@@ -340,6 +342,8 @@ def vmatch_multi_pass(gpmfile,
         Name of the reflectivity field in the ground radar data.
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
+    correct_attenuation: bool
+        Should we correct for C- or X-band ground radar attenuation
     output_dir: str
         Path to output directory.
     '''

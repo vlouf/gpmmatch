@@ -389,6 +389,8 @@ def data_load_and_checks(gpmfile,
         and advection.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
+    correct_attenuation: bool
+        Should we correct for C- or X-band ground radar attenuation.
     radar_band: str
         Ground radar frequency band for reflectivity conversion. S, C, and X
         supported.
@@ -467,7 +469,7 @@ def data_load_and_checks(gpmfile,
     # Time to read the ground radar data.
     radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
     if correct_attenuation:
-        if radar_band in ['X', 'C']:  # Correct attenuation of X or C bands.        
+        if radar_band in ['X', 'C']:  # Correct attenuation of X or C bands.
             corr_refl = correct.correct_attenuation(radar.fields[refl_name]['data'], radar_band)
             refl_dict = radar.fields.pop(refl_name)
             refl_dict['data'] = corr_refl
