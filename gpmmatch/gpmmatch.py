@@ -113,8 +113,8 @@ def volume_matching(gpmfile,
     ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
     ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
 
-    # Extract GPM data.
-    position_precip_domain = gpmset.precip_in_gr_domain != 0
+    # Extract GPM data.    
+    position_precip_domain = gpmset.precip_in_gr_domain.values != 0
 
     alpha, _ = np.meshgrid(gpmset.nray, gpmset.nscan)
     alpha = alpha[position_precip_domain]
