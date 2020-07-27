@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 11/07/2020
+@date: 24/07/2020
     _mkdir
     load_national_archive_info
     remove
@@ -275,7 +275,7 @@ def main():
         rid = os.path.basename(config)[-6:-4]
         if rid != RID:
             continue
-        df = pd.read_csv(config, parse_dates=['date'], header=None, names=['date', 'name', 'lon', 'lat', 'nprof', 'source'])
+        df = pd.read_csv(config, parse_dates=['date'], header=0, names=['date', 'name', 'lon', 'lat', 'nprof', 'source'])
 
         argslist = []
         for n in range(len(df)):
