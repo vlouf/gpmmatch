@@ -5,7 +5,7 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 24/02/2020
-@date: 11/07/2020
+@date: 28/07/2020
 
     load_national_archive_info
     gpmset_metadata
@@ -67,6 +67,16 @@ def get_metadata() -> dict:
     metadata: dict
     """
     metadata = {
+        "fmin_gpm": {
+            "units": "",
+            "long_name": "fmin_gpm",
+            "description": "FMIN ratio for GPM.",
+        },
+        "fmin_gr": {
+            "units": "",
+            "long_name": "fmin_gr",
+            "description": "FMIN ratio for GR.",
+        },
         "refl_gpm_raw": {
             "units": "dBZ",
             "long_name": "GPM_reflectivity",
