@@ -236,8 +236,8 @@ def volume_matching(gpmfile,
     data['elevation_gr'] = elev_gr[:ntilt]
     data['timedelta'] = delta_t
 
-    if np.sum(~np.isnan(data['refl_gpm_raw'])) < 25:
-        raise NoRainError('At least 25 sample points are required.')
+    if np.sum((~np.isnan(data['refl_gpm_raw'])) & (~np.isnan(data['refl_gr_raw']))) < 20:
+        raise NoRainError('At least 20 sample points are required.')
 
     # Transform to xarray and build metadata
     match = dict()
