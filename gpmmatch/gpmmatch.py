@@ -1,4 +1,4 @@
-'''
+"""
 Volume matching of ground radar and GPM satellite. It also works with the
 latest version of TRMM data.
 
@@ -9,7 +9,7 @@ latest version of TRMM data.
 @date: 28/07/2020
     volume_matching
     vmatch_multi_pass
-'''
+"""
 import os
 import uuid
 import datetime
@@ -33,18 +33,20 @@ class NoRainError(Exception):
     pass
 
 
-def volume_matching(gpmfile,
-                    grfile,
-                    grfile2=None,
-                    gr_offset=0,
-                    gr_beamwidth=1,
-                    gr_rmax=None,
-                    gr_refl_threshold=10,
-                    radar_band='C',
-                    refl_name='corrected_reflectivity',
-                    correct_attenuation=True,
-                    fname_prefix=None):
-    '''
+def volume_matching(
+    gpmfile,
+    grfile,
+    grfile2=None,
+    gr_offset=0,
+    gr_beamwidth=1,
+    gr_rmax=None,
+    gr_refl_threshold=10,
+    radar_band="C",
+    refl_name="corrected_reflectivity",
+    correct_attenuation=True,
+    fname_prefix=None,
+):
+    """
     Performs the volume matching of GPM satellite data to ground based radar.
 
     Parameters:
@@ -76,40 +78,42 @@ def volume_matching(gpmfile,
     --------
     matchset: xarray.Dataset
         Dataset containing the matched GPM and ground radar data.
-    '''
+    """
     if fname_prefix is None:
-        fname_prefix = 'unknown_radar'
+        fname_prefix = "unknown_radar"
 
-    gpmset, radar = data_load_and_checks(gpmfile,
-                                         grfile,
-                                         grfile2=grfile2,
-                                         refl_name=refl_name,
-                                         correct_attenuation=correct_attenuation,
-                                         radar_band=radar_band)
+    gpmset, radar = data_load_and_checks(
+        gpmfile,
+        grfile,
+        grfile2=grfile2,
+        refl_name=refl_name,
+        correct_attenuation=correct_attenuation,
+        radar_band=radar_band,
+    )
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
-    if radar.elevation['data'].max() >= 80:
+    if radar.elevation["data"].max() >= 80:
         ntilt = radar.nsweeps - 1
     else:
         ntilt = radar.nsweeps
 
     # Extract ground radar data.
-    range_gr = radar.range['data']
+    range_gr = radar.range["data"]
     dr = range_gr[1] - range_gr[0]
     if gr_rmax is None:
         gr_rmax = range_gr.max()
 
-    elev_gr = np.unique(radar.elevation['data'])
-    xradar = radar.gate_x['data']
-    yradar = radar.gate_y['data']
-    tradar = cftime.num2pydate(radar.time['data'], radar.time['units']).astype('datetime64')
-    deltat = (tradar - gpmset.overpass_time.values)
+    elev_gr = np.unique(radar.elevation["data"])
+    xradar = radar.gate_x["data"]
+    yradar = radar.gate_y["data"]
+    tradar = cftime.num2pydate(radar.time["data"], radar.time["units"]).astype("datetime64")
+    deltat = tradar - gpmset.overpass_time.values
 
-    R, _ = np.meshgrid(radar.range['data'], radar.azimuth['data'])
-    _, DT = np.meshgrid(radar.range['data'], deltat)
+    R, _ = np.meshgrid(radar.range["data"], radar.azimuth["data"])
+    _, DT = np.meshgrid(radar.range["data"], deltat)
 
     # Substract offset to the ground radar reflectivity
-    ground_radar_reflectivity = radar.fields[refl_name]['data'].copy().filled(np.NaN) - gr_offset
+    ground_radar_reflectivity = (radar.fields[refl_name]["data"].copy().filled(np.NaN) - gr_offset)
     ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
     ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
 
@@ -242,12 +246,12 @@ def volume_matching(gpmfile,
     # Transform to xarray and build metadata
     match = dict()
     for k, v in data.items():
-        if k in ['ntilt', 'elevation_gr']:
-            match[k] = (('ntilt'), v)
-        elif k == 'nprof':
-            match[k] = (('nprof'), v)
+        if k in ["ntilt", "elevation_gr"]:
+            match[k] = (("ntilt"), v)
+        elif k == "nprof":
+            match[k] = (("nprof"), v)
         else:
-            match[k] = (('nprof', 'ntilt'), np.ma.masked_invalid(v.astype(np.float32)))
+            match[k] = (("nprof", "ntilt"), np.ma.masked_invalid(v.astype(np.float32)))
 
     matchset = xr.Dataset(match)
     metadata = get_metadata()
@@ -305,19 +309,21 @@ def volume_matching(gpmfile,
     return matchset
 
 
-def vmatch_multi_pass(gpmfile,
-                      grfile,
-                      grfile2=None,
-                      gr_offset=0,
-                      gr_beamwidth=1,
-                      gr_rmax=None,
-                      gr_refl_threshold=10,
-                      radar_band='C',
-                      refl_name='corrected_reflectivity',
-                      fname_prefix=None,
-                      correct_attenuation=True,
-                      output_dir=None):
-    '''
+def vmatch_multi_pass(
+    gpmfile,
+    grfile,
+    grfile2=None,
+    gr_offset=0,
+    gr_beamwidth=1,
+    gr_rmax=None,
+    gr_refl_threshold=10,
+    radar_band="C",
+    refl_name="corrected_reflectivity",
+    fname_prefix=None,
+    correct_attenuation=True,
+    output_dir=None,
+):
+    """
     Multi-pass volume matching with automatic offset computation.
 
     Parameters:
@@ -346,11 +352,12 @@ def vmatch_multi_pass(gpmfile,
         Should we correct for C- or X-band ground radar attenuation
     output_dir: str
         Path to output directory.
-    '''
+    """
+
     def _save(dset, output_directory):
-        '''
+        """
         Generate multipass metadata and file name.
-        '''
+        """
         dset.attrs['iteration_number'] = counter
         matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
         outfilename = dset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
@@ -365,34 +372,38 @@ def vmatch_multi_pass(gpmfile,
         output_dir = os.getcwd()
 
     # Generate output directories.
-    output_dirs = {'first': os.path.join(output_dir, 'first_pass'),
-                   'inter': os.path.join(output_dir, 'inter_pass'),
-                   'final': os.path.join(output_dir, 'final_pass')}
+    output_dirs = {
+        'first': os.path.join(output_dir, 'first_pass'),
+        'inter': os.path.join(output_dir, 'inter_pass'),
+        'final': os.path.join(output_dir, 'final_pass'),
+    }
     [_mkdir(v) for k, v in output_dirs.items()]
 
     # First pass
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        matchset = volume_matching(gpmfile,
-                                   grfile,
-                                   grfile2=grfile2,
-                                   gr_offset=gr_offset,
-                                   radar_band=radar_band,
-                                   refl_name=refl_name,
-                                   fname_prefix=fname_prefix,
-                                   correct_attenuation=correct_attenuation,
-                                   gr_beamwidth=gr_beamwidth,
-                                   gr_rmax=gr_rmax,
-                                   gr_refl_threshold=gr_refl_threshold)
-    pass_offset = matchset.attrs['offset_found']
+        matchset = volume_matching(
+            gpmfile,
+            grfile,
+            grfile2=grfile2,
+            gr_offset=gr_offset,
+            radar_band=radar_band,
+            refl_name=refl_name,
+            fname_prefix=fname_prefix,
+            correct_attenuation=correct_attenuation,
+            gr_beamwidth=gr_beamwidth,
+            gr_rmax=gr_rmax,
+            gr_refl_threshold=gr_refl_threshold,
+        )
+    pass_offset = matchset.attrs["offset_found"]
     gr_offset = pass_offset
     offset_keeping_track = [pass_offset]
-    final_offset_keeping_track = [matchset.attrs['final_offset']]
-    _save(matchset, output_dirs['first'])
+    final_offset_keeping_track = [matchset.attrs["final_offset"]]
+    _save(matchset, output_dirs["first"])
 
     if np.isnan(pass_offset):
-        dtime = matchset.attrs['gpm_overpass_time']
-        print(f'Offset is NAN for pass {counter} on {dtime}.')
+        dtime = matchset.attrs["gpm_overpass_time"]
+        print(f"Offset is NAN for pass {counter} on {dtime}.")
         return None
 
     # Multiple pass as long as the difference is more than 1dB or counter is 6
@@ -400,23 +411,25 @@ def vmatch_multi_pass(gpmfile,
         for counter in range(1, 6):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                new_matchset = volume_matching(gpmfile,
-                                            grfile,
-                                            grfile2=grfile2,
-                                            gr_offset=gr_offset,
-                                            radar_band=radar_band,
-                                            refl_name=refl_name,
-                                            fname_prefix=fname_prefix,
-                                            correct_attenuation=correct_attenuation,
-                                            gr_beamwidth=gr_beamwidth,
-                                            gr_rmax=gr_rmax,
-                                            gr_refl_threshold=gr_refl_threshold)
+                new_matchset = volume_matching(
+                    gpmfile,
+                    grfile,
+                    grfile2=grfile2,
+                    gr_offset=gr_offset,
+                    radar_band=radar_band,
+                    refl_name=refl_name,
+                    fname_prefix=fname_prefix,
+                    correct_attenuation=correct_attenuation,
+                    gr_beamwidth=gr_beamwidth,
+                    gr_rmax=gr_rmax,
+                    gr_refl_threshold=gr_refl_threshold,
+                )
             # Save intermediary file.
-            _save(new_matchset, output_dirs['inter'])
+            _save(new_matchset, output_dirs["inter"])
 
             # Check offset found.
-            gr_offset = new_matchset.attrs['final_offset']
-            pass_offset = new_matchset.attrs['offset_found']
+            gr_offset = new_matchset.attrs["final_offset"]
+            pass_offset = new_matchset.attrs["offset_found"]
             if np.isnan(pass_offset):
                 # Solution converged already. Using previous iteration as final result.
                 counter -= 1
