@@ -113,7 +113,7 @@ def volume_matching(gpmfile,
     ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
     ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
 
-    # Extract GPM data.    
+    # Extract GPM data.
     position_precip_domain = gpmset.precip_in_gr_domain.values != 0
 
     alpha, _ = np.meshgrid(gpmset.nray, gpmset.nscan)
@@ -144,7 +144,7 @@ def volume_matching(gpmfile,
     # Initialising output data.
     datakeys = ['refl_gpm_raw', 'refl_gr_weigthed', 'refl_gpm_grband', 'pir_gpm', 'pir_gr',
                 'refl_gr_raw', 'std_refl_gpm', 'std_refl_gr', 'sample_gpm', 'reject_gpm',
-                'sample_gr', 'reject_gr', 'volume_match_gpm', 'volume_match_gr']
+                'fmin_gpm', 'fmin_gr', 'sample_gr', 'reject_gr', 'volume_match_gpm', 'volume_match_gr']
 
     data = dict()
     for k in datakeys:
@@ -206,10 +206,10 @@ def volume_matching(gpmfile,
             continue
         if np.all(np.isnan(refl_gr_raw.filled(np.NaN))):
             continue
-        if np.sum(refl_gpm > 0) / len(refl_gpm) < 0.95:
-            continue
-        if np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw) < 0.95:
-            continue
+
+        # FMIN parameter.
+        data['fmin_gpm'][ii, jj] = np.sum(refl_gpm > 0) / len(refl_gpm)
+        data['fmin_gr'][ii, jj] = np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw)
 
         # GPM
         data['refl_gpm_raw'][ii, jj] = np.mean(refl_gpm)
