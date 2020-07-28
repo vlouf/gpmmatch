@@ -5,7 +5,7 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 11/07/2020
+@date: 28/07/2020
     correct_attenuation
     correct_parallax
     correct_refraction
@@ -209,8 +209,9 @@ def get_offset(matchset, dr, nbins=200) -> float:
 
     refl_gpm = matchset.refl_gpm_grband.values.flatten().copy()
     refl_gr = matchset.refl_gr_weigthed.values.flatten().copy()
+    fmin = matchset.fmin_gr.values.flatten().copy()
 
-    pos = (refl_gpm > 36) | (refl_gr > 36)
+    pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin != 1) 
     refl_gpm[pos] = np.NaN
     refl_gr[pos] = np.NaN    
     
