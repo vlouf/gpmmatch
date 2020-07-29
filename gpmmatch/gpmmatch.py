@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 28/07/2020
+@date: 29/07/2020
     volume_matching
     vmatch_multi_pass
 """
@@ -374,7 +374,7 @@ def vmatch_multi_pass(
     # Generate output directories.
     output_dirs = {
         'first': os.path.join(output_dir, 'first_pass'),
-        'inter': os.path.join(output_dir, 'inter_pass'),
+        # 'inter': os.path.join(output_dir, 'inter_pass'),
         'final': os.path.join(output_dir, 'final_pass'),
     }
     [_mkdir(v) for k, v in output_dirs.items()]
@@ -425,7 +425,7 @@ def vmatch_multi_pass(
                     gr_refl_threshold=gr_refl_threshold,
                 )
             # Save intermediary file.
-            _save(new_matchset, output_dirs["inter"])
+            # _save(new_matchset, output_dirs["inter"])
 
             # Check offset found.
             gr_offset = new_matchset.attrs["final_offset"]
