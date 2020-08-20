@@ -5,16 +5,82 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 28/07/2020
+@date: 21/08/2020
+
+.. autosummary::
+    :toctree: generated/
+
+    compute_gaussian_curvature
+    convert_sat_refl_to_gr_band
     correct_attenuation
     correct_parallax
     correct_refraction
-    convert_sat_refl_to_gr_band
-    compute_gaussian_curvature
     get_offset
     grid_displacement
 '''
 import numpy as np
+
+
+def compute_gaussian_curvature(lat0):
+    '''
+    Determine the Earth's Gaussian radius of curvature at the radar
+    https://en.wikipedia.org/wiki/Earth_radius#Radii_of_curvature
+
+    Parameter:
+    ----------
+    lat0: float
+        Ground radar latitude.
+
+    Returns:
+    --------
+    ae: float
+        Scaled Gaussian radius.
+    '''
+    # Major and minor radii of the Ellipsoid
+    a = 6378137.0  # Earth radius in meters
+    e2 = 0.0066943800
+    b = a * np.sqrt(1 - e2)
+
+    tmp = (a * np.cos(np.pi / 180 * lat0))**2 + (b * np.sin(np.pi / 180 * lat0))**2   # Denominator
+    an = (a**2) / np.sqrt(tmp)  # Radius of curvature in the prime vertical (east–west direction)
+    am = (a * b)**2 / tmp ** 1.5  # Radius of curvature in the north–south meridian
+    ag = np.sqrt(an * am)  # Earth's Gaussian radius of curvature
+    ae = (4 / 3.) * ag
+
+    return ae
+
+
+def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
+    '''
+    Convert GPM reflectivity to ground radar band using the DFR relationship
+    found in Louf et al. (2019) paper.
+
+    Parameters:
+    ===========
+    refl_gpm:
+        Satellite reflectivity field.
+    radar_band: str
+        Possible values are 'S', 'C', or 'X'
+
+    Return:
+    =======
+    refl:
+        Reflectivity conversion from Ku-band to ground radar band
+    '''
+    if radar_band == 'S':
+        cof = np.array([ 2.01236803e-07, -6.50694273e-06,  1.10885533e-03, -6.47985914e-02, -7.46518423e-02])
+        dfr = np.poly1d(cof)
+    elif radar_band == 'C':
+        cof = np.array([ 1.21547932e-06, -1.23266138e-04,  6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
+        dfr = np.poly1d(cof)
+    elif radar_band == 'X':
+        # Use of C band DFR relationship multiply by ratio
+        cof = np.array([ 1.21547932e-06, -1.23266138e-04,  6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
+        dfr = 3.2 / 5.5 * np.poly1d(cof)
+    else:
+         raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
+
+    return refl_gpm + dfr(refl_gpm)
 
 
 def correct_attenuation(reflectivity, radar_band):
@@ -123,68 +189,6 @@ def correct_refraction(elevation: float,
     return np.rad2deg(refra)
 
 
-def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
-    '''
-    Convert GPM reflectivity to ground radar band using the DFR relationship
-    found in Louf et al. (2019) paper.
-
-    Parameters:
-    ===========
-    refl_gpm:
-        Satellite reflectivity field.
-    radar_band: str
-        Possible values are 'S', 'C', or 'X'
-
-    Return:
-    =======
-    refl:
-        Reflectivity conversion from Ku-band to ground radar band
-    '''
-    if radar_band == 'S':
-        cof = np.array([ 2.01236803e-07, -6.50694273e-06,  1.10885533e-03, -6.47985914e-02, -7.46518423e-02])
-        dfr = np.poly1d(cof)
-    elif radar_band == 'C':
-        cof = np.array([ 1.21547932e-06, -1.23266138e-04,  6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
-        dfr = np.poly1d(cof)
-    elif radar_band == 'X':
-        # Use of C band DFR relationship multiply by ratio
-        cof = np.array([ 1.21547932e-06, -1.23266138e-04,  6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
-        dfr = 3.2 / 5.5 * np.poly1d(cof)
-    else:
-         raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
-
-    return refl_gpm + dfr(refl_gpm)
-
-
-def compute_gaussian_curvature(lat0):
-    '''
-    Determine the Earth's Gaussian radius of curvature at the radar
-    https://en.wikipedia.org/wiki/Earth_radius#Radii_of_curvature
-
-    Parameter:
-    ----------
-    lat0: float
-        Ground radar latitude.
-
-    Returns:
-    --------
-    ae: float
-        Scaled Gaussian radius.
-    '''
-    # Major and minor radii of the Ellipsoid
-    a = 6378137.0  # Earth radius in meters
-    e2 = 0.0066943800
-    b = a * np.sqrt(1 - e2)
-
-    tmp = (a * np.cos(np.pi / 180 * lat0))**2 + (b * np.sin(np.pi / 180 * lat0))**2   # Denominator
-    an = (a**2) / np.sqrt(tmp)  # Radius of curvature in the prime vertical (east–west direction)
-    am = (a * b)**2 / tmp ** 1.5  # Radius of curvature in the north–south meridian
-    ag = np.sqrt(an * am)  # Earth's Gaussian radius of curvature
-    ae = (4 / 3.) * ag
-
-    return ae
-
-
 def get_offset(matchset, dr, nbins=200) -> float:
     '''
     Compute the Offset between GR and GPM. It will try to compute the mode of
@@ -211,10 +215,10 @@ def get_offset(matchset, dr, nbins=200) -> float:
     refl_gr = matchset.refl_gr_weigthed.values.flatten().copy()
     fmin = matchset.fmin_gr.values.flatten().copy()
 
-    pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin != 1) 
+    pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin != 1)
     refl_gpm[pos] = np.NaN
-    refl_gr[pos] = np.NaN    
-    
+    refl_gr[pos] = np.NaN
+
     pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
     for idx, a in enumerate(offset):
         pdf_gr, _ = np.histogram(refl_gr  - a, range=[0, 50], bins=nbins, density=True)
