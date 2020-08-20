@@ -8,15 +8,19 @@ volume_matching.
 @creation: 17/02/2020
 @date: 21/08/2020
 
+.. autosummary::
+    :toctree: generated/
+
     NoPrecipitationError
     _read_radar
     _mkdir
-    savedata
+    check_precip_in_domain
+    data_load_and_checks
+    get_ground_radar_attributes
     get_gpm_orbit
     read_GPM
     read_radars
-    get_ground_radar_attributes
-    data_load_and_checks
+    savedata
 '''
 import os
 import re
@@ -139,23 +143,114 @@ def check_precip_in_domain(gpmset, grlon, grlat, rmax=150e3, rmin=20e3):
     return gpmtime0, nprof
 
 
-def savedata(matchset, output_dir, outfilename):
+def data_load_and_checks(gpmfile,
+                         grfile,
+                         grfile2=None,
+                         refl_name=None,
+                         correct_attenuation=True,
+                         radar_band='C'):
     '''
-    Save dataset as a netCDF4.
+    Load GPM and Ground radar files and perform some initial checks:
+    domains intersect, precipitation, time difference.
 
     Parameters:
-    ----------
-    matchset: xarray
-        Dataset containing the matched GPM and ground radar data.
-    output_dir: str
-        Path to output directory.
-    outfilename: str
-        Output file name.
-    '''
-    outfile = os.path.join(output_dir, outfilename)
-    matchset.to_netcdf(outfile, encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
+    -----------
+    gpmfile: str
+        GPM data file.
+    grfile: str
+        Ground radar input file.
+    grfile2: str
+        (Optional) Second ground radar input file to compute grid displacement
+        and advection.
+    refl_name: str
+        Name of the reflectivity field in the ground radar data.
+    correct_attenuation: bool
+        Should we correct for C- or X-band ground radar attenuation.
+    radar_band: str
+        Ground radar frequency band for reflectivity conversion. S, C, and X
+        supported.
 
-    return None
+    Returns:
+    --------
+    gpmset: xarray.Dataset
+        Dataset containing the input datas.
+    radar: pyart.core.Radar
+        Pyart radar dataset.
+    '''
+    if refl_name is None:
+        raise ValueError('Reflectivity field name not given.')
+    if grfile2 is None:
+        gpmtime0 = 0
+
+    gpmset = read_GPM(gpmfile)
+    grlon, grlat, gralt, rmin, rmax = get_ground_radar_attributes(grfile)
+
+    # Reproject satellite coordinates onto ground radar
+    georef = pyproj.Proj(f"+proj=aeqd +lon_0={grlon} +lat_0={grlat} +ellps=WGS84")
+    gpmlat = gpmset.Latitude.values
+    gpmlon = gpmset.Longitude.values
+
+    xgpm, ygpm = georef(gpmlon, gpmlat)
+    rproj_gpm = (xgpm ** 2 + ygpm ** 2) ** 0.5
+
+    gr_domain = (rproj_gpm <= rmax) & (rproj_gpm >= rmin)
+    if gr_domain.sum() < 10:
+        info = f'The closest satellite measurement is {np.min(rproj_gpm / 1e3):0.4} km away from ground radar.'
+        if gr_domain.sum() == 0:
+            raise NoPrecipitationError('GPM swath does not go through the radar domain. ' + info)
+        else:
+            raise NoPrecipitationError('Not enough GPM precipitation inside ground radar domain. ' + info)
+
+    nprof = np.sum(gpmset.flagPrecip.values[gr_domain])
+    if nprof < 10:
+        raise NoPrecipitationError('No precipitation measured by GPM inside radar domain.')
+
+    # Parallax correction
+    sr_xp, sr_yp, z_sr = correct.correct_parallax(xgpm, ygpm, gpmset)
+
+    # Compute the elevation of the satellite bins with respect to the ground radar.
+    gr_gaussian_radius = correct.compute_gaussian_curvature(grlat)
+    gamma = np.sqrt(sr_xp ** 2 + sr_yp ** 2) / gr_gaussian_radius
+    elev_sr_grref = np.rad2deg(np.arctan2(np.cos(gamma) - (gr_gaussian_radius + gralt) / (gr_gaussian_radius + z_sr), np.sin(gamma)))
+
+    # Convert reflectivity band correction
+    reflgpm_grband = correct.convert_gpmrefl_grband_dfr(gpmset.zFactorCorrected.values, radar_band=radar_band)
+
+    gpmset = gpmset.merge({'precip_in_gr_domain':  (('nscan', 'nray'), gpmset.flagPrecip.values & gr_domain),
+                           'range_from_gr': (('nscan', 'nray'), rproj_gpm),
+                           'elev_from_gr': (('nscan', 'nray', 'nbin'), elev_sr_grref),
+                           'x': (('nscan', 'nray', 'nbin'), sr_xp),
+                           'y': (('nscan', 'nray', 'nbin'), sr_yp),
+                           'z': (('nscan', 'nray', 'nbin'), z_sr),
+                           'reflectivity_grband': (('nscan', 'nray', 'nbin'), reflgpm_grband)})
+
+    # Get time of the overpass (closest point from ground radar).
+    gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
+    gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
+    gpmset = gpmset.merge({'overpass_time': (gpmtime0)})
+
+    # Attributes
+    metadata = default.gpmset_metadata()
+    for k, v in metadata.items():
+        for sk, sv in v.items():
+            try:
+                gpmset[k].attrs[sk] = sv
+            except KeyError:
+                continue
+    gpmset.reflectivity_grband.attrs['description'] = f'Satellite reflectivity converted to {radar_band}-band.'
+    gpmset.attrs['nprof'] = nprof
+    gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
+
+    # Time to read the ground radar data.
+    radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
+    if correct_attenuation:
+        if radar_band in ['X', 'C']:  # Correct attenuation of X or C bands.
+            corr_refl = correct.correct_attenuation(radar.fields[refl_name]['data'], radar_band)
+            refl_dict = radar.fields.pop(refl_name)
+            refl_dict['data'] = corr_refl
+            radar.add_field(refl_name, refl_dict)
+
+    return gpmset, radar
 
 
 def get_gpm_orbit(gpmfile: str) -> int:
@@ -178,6 +273,41 @@ def get_gpm_orbit(gpmfile: str) -> int:
         return 0
 
     return int(orbit)
+
+
+def get_ground_radar_attributes(grfile: str) -> (float, float, float, float):
+    '''
+    Read the ground radar attributes, latitude/longitude, altitude, range
+    min/max.
+
+    Parameter:
+    ==========
+    grfile: str
+        Input ground radar file.
+
+    Returns:
+    ========
+    grlon: float
+        Radar longitude.
+    grlat: float
+        Radar latitude.
+    gralt: float
+        Radar altitude.
+    rmin : float
+        Radar minimum range (cone of silence.)
+    rmax: float
+        Radar maximum range.
+    '''
+    radar = _read_radar(grfile, None)
+
+    rmax = radar.range['data'].max()
+    rmin = 15e3
+    grlon = radar.longitude['data'][0]
+    grlat = radar.latitude['data'][0]
+    gralt = radar.altitude['data'][0]
+
+    del radar
+    return grlon, grlat, gralt, rmin, rmax
 
 
 def read_GPM(infile, refl_min_thld=0):
@@ -380,146 +510,20 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
     return radar0
 
 
-def get_ground_radar_attributes(grfile: str) -> (float, float, float, float):
+def savedata(matchset, output_dir, outfilename):
     '''
-    Read the ground radar attributes, latitude/longitude, altitude, range
-    min/max.
-
-    Parameter:
-    ==========
-    grfile: str
-        Input ground radar file.
-
-    Returns:
-    ========
-    grlon: float
-        Radar longitude.
-    grlat: float
-        Radar latitude.
-    gralt: float
-        Radar altitude.
-    rmin : float
-        Radar minimum range (cone of silence.)
-    rmax: float
-        Radar maximum range.
-    '''
-    radar = _read_radar(grfile, None)
-
-    rmax = radar.range['data'].max()
-    rmin = 15e3
-    grlon = radar.longitude['data'][0]
-    grlat = radar.latitude['data'][0]
-    gralt = radar.altitude['data'][0]
-
-    del radar
-    return grlon, grlat, gralt, rmin, rmax
-
-
-def data_load_and_checks(gpmfile,
-                         grfile,
-                         grfile2=None,
-                         refl_name=None,
-                         correct_attenuation=True,
-                         radar_band='C'):
-    '''
-    Load GPM and Ground radar files and perform some initial checks:
-    domains intersect, precipitation, time difference.
+    Save dataset as a netCDF4.
 
     Parameters:
-    -----------
-    gpmfile: str
-        GPM data file.
-    grfile: str
-        Ground radar input file.
-    grfile2: str
-        (Optional) Second ground radar input file to compute grid displacement
-        and advection.
-    refl_name: str
-        Name of the reflectivity field in the ground radar data.
-    correct_attenuation: bool
-        Should we correct for C- or X-band ground radar attenuation.
-    radar_band: str
-        Ground radar frequency band for reflectivity conversion. S, C, and X
-        supported.
-
-    Returns:
-    --------
-    gpmset: xarray.Dataset
-        Dataset containing the input datas.
-    radar: pyart.core.Radar
-        Pyart radar dataset.
+    ----------
+    matchset: xarray
+        Dataset containing the matched GPM and ground radar data.
+    output_dir: str
+        Path to output directory.
+    outfilename: str
+        Output file name.
     '''
-    if refl_name is None:
-        raise ValueError('Reflectivity field name not given.')
-    if grfile2 is None:
-        gpmtime0 = 0
+    outfile = os.path.join(output_dir, outfilename)
+    matchset.to_netcdf(outfile, encoding={k : {'zlib': True} for k in [k for k, v in matchset.items()]})
 
-    gpmset = read_GPM(gpmfile)
-    grlon, grlat, gralt, rmin, rmax = get_ground_radar_attributes(grfile)
-
-    # Reproject satellite coordinates onto ground radar
-    georef = pyproj.Proj(f"+proj=aeqd +lon_0={grlon} +lat_0={grlat} +ellps=WGS84")
-    gpmlat = gpmset.Latitude.values
-    gpmlon = gpmset.Longitude.values
-
-    xgpm, ygpm = georef(gpmlon, gpmlat)
-    rproj_gpm = (xgpm ** 2 + ygpm ** 2) ** 0.5
-
-    gr_domain = (rproj_gpm <= rmax) & (rproj_gpm >= rmin)
-    if gr_domain.sum() < 10:
-        info = f'The closest satellite measurement is {np.min(rproj_gpm / 1e3):0.4} km away from ground radar.'
-        if gr_domain.sum() == 0:
-            raise NoPrecipitationError('GPM swath does not go through the radar domain. ' + info)
-        else:
-            raise NoPrecipitationError('Not enough GPM precipitation inside ground radar domain. ' + info)
-
-    nprof = np.sum(gpmset.flagPrecip.values[gr_domain])
-    if nprof < 10:
-        raise NoPrecipitationError('No precipitation measured by GPM inside radar domain.')
-
-    # Parallax correction
-    sr_xp, sr_yp, z_sr = correct.correct_parallax(xgpm, ygpm, gpmset)
-
-    # Compute the elevation of the satellite bins with respect to the ground radar.
-    gr_gaussian_radius = correct.compute_gaussian_curvature(grlat)
-    gamma = np.sqrt(sr_xp ** 2 + sr_yp ** 2) / gr_gaussian_radius
-    elev_sr_grref = np.rad2deg(np.arctan2(np.cos(gamma) - (gr_gaussian_radius + gralt) / (gr_gaussian_radius + z_sr), np.sin(gamma)))
-
-    # Convert reflectivity band correction
-    reflgpm_grband = correct.convert_gpmrefl_grband_dfr(gpmset.zFactorCorrected.values, radar_band=radar_band)
-
-    gpmset = gpmset.merge({'precip_in_gr_domain':  (('nscan', 'nray'), gpmset.flagPrecip.values & gr_domain),
-                           'range_from_gr': (('nscan', 'nray'), rproj_gpm),
-                           'elev_from_gr': (('nscan', 'nray', 'nbin'), elev_sr_grref),
-                           'x': (('nscan', 'nray', 'nbin'), sr_xp),
-                           'y': (('nscan', 'nray', 'nbin'), sr_yp),
-                           'z': (('nscan', 'nray', 'nbin'), z_sr),
-                           'reflectivity_grband': (('nscan', 'nray', 'nbin'), reflgpm_grband)})
-
-    # Get time of the overpass (closest point from ground radar).
-    gpmtime0 = gpmset.nscan.where(gpmset.range_from_gr == gpmset.range_from_gr.min()).values.astype('datetime64[s]')
-    gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
-    gpmset = gpmset.merge({'overpass_time': (gpmtime0)})
-
-    # Attributes
-    metadata = default.gpmset_metadata()
-    for k, v in metadata.items():
-        for sk, sv in v.items():
-            try:
-                gpmset[k].attrs[sk] = sv
-            except KeyError:
-                continue
-    gpmset.reflectivity_grband.attrs['description'] = f'Satellite reflectivity converted to {radar_band}-band.'
-    gpmset.attrs['nprof'] = nprof
-    gpmset.attrs['earth_gaussian_radius'] = gr_gaussian_radius
-
-    # Time to read the ground radar data.
-    radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
-    if correct_attenuation:
-        if radar_band in ['X', 'C']:  # Correct attenuation of X or C bands.
-            corr_refl = correct.correct_attenuation(radar.fields[refl_name]['data'], radar_band)
-            refl_dict = radar.fields.pop(refl_name)
-            refl_dict['data'] = corr_refl
-            radar.add_field(refl_name, refl_dict)
-
-    return gpmset, radar
+    return None
