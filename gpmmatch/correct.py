@@ -1,4 +1,4 @@
-'''
+"""
 Various utilities for correction and conversion of satellite data.
 
 @title: correct
@@ -17,12 +17,12 @@ Various utilities for correction and conversion of satellite data.
     correct_refraction
     get_offset
     grid_displacement
-'''
+"""
 import numpy as np
 
 
 def compute_gaussian_curvature(lat0):
-    '''
+    """
     Determine the Earth's Gaussian radius of curvature at the radar
     https://en.wikipedia.org/wiki/Earth_radius#Radii_of_curvature
 
@@ -35,23 +35,23 @@ def compute_gaussian_curvature(lat0):
     --------
     ae: float
         Scaled Gaussian radius.
-    '''
+    """
     # Major and minor radii of the Ellipsoid
     a = 6378137.0  # Earth radius in meters
     e2 = 0.0066943800
     b = a * np.sqrt(1 - e2)
 
-    tmp = (a * np.cos(np.pi / 180 * lat0))**2 + (b * np.sin(np.pi / 180 * lat0))**2   # Denominator
-    an = (a**2) / np.sqrt(tmp)  # Radius of curvature in the prime vertical (east–west direction)
-    am = (a * b)**2 / tmp ** 1.5  # Radius of curvature in the north–south meridian
+    tmp = (a * np.cos(np.pi / 180 * lat0)) ** 2 + (b * np.sin(np.pi / 180 * lat0)) ** 2  # Denominator
+    an = (a ** 2) / np.sqrt(tmp)  # Radius of curvature in the prime vertical (east–west direction)
+    am = (a * b) ** 2 / tmp ** 1.5  # Radius of curvature in the north–south meridian
     ag = np.sqrt(an * am)  # Earth's Gaussian radius of curvature
-    ae = (4 / 3.) * ag
+    ae = (4 / 3.0) * ag
 
     return ae
 
 
 def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
-    '''
+    """
     Convert GPM reflectivity to ground radar band using the DFR relationship
     found in Louf et al. (2019) paper.
 
@@ -66,25 +66,25 @@ def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
     =======
     refl:
         Reflectivity conversion from Ku-band to ground radar band
-    '''
-    if radar_band == 'S':
-        cof = np.array([ 2.01236803e-07, -6.50694273e-06,  1.10885533e-03, -6.47985914e-02, -7.46518423e-02])
+    """
+    if radar_band == "S":
+        cof = np.array([2.01236803e-07, -6.50694273e-06, 1.10885533e-03, -6.47985914e-02, -7.46518423e-02])
         dfr = np.poly1d(cof)
-    elif radar_band == 'C':
-        cof = np.array([ 1.21547932e-06, -1.23266138e-04,  6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
+    elif radar_band == "C":
+        cof = np.array([1.21547932e-06, -1.23266138e-04, 6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
         dfr = np.poly1d(cof)
-    elif radar_band == 'X':
+    elif radar_band == "X":
         # Use of C band DFR relationship multiply by ratio
-        cof = np.array([ 1.21547932e-06, -1.23266138e-04,  6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
+        cof = np.array([1.21547932e-06, -1.23266138e-04, 6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
         dfr = 3.2 / 5.5 * np.poly1d(cof)
     else:
-         raise ValueError(f'Radar reflectivity band ({radar_band}) not supported.')
+        raise ValueError(f"Radar reflectivity band ({radar_band}) not supported.")
 
     return refl_gpm + dfr(refl_gpm)
 
 
 def correct_attenuation(reflectivity, radar_band):
-    '''
+    """
     Correct from C- or X-Band attenuation using a Z-A relationship derived from
     T-matrix calculations using the Meteor disdrometer.
 
@@ -97,11 +97,11 @@ def correct_attenuation(reflectivity, radar_band):
     ========
     corr_refl: ndarray
         Attenuation-corrected reflectivity.
-    '''
+    """
     ze = 10 ** (reflectivity / 10)
-    if radar_band == 'X':
+    if radar_band == "X":
         atten = 3.30240183e-6 * ze + 9.67774379e-2
-    elif radar_band == 'C':
+    elif radar_band == "C":
         atten = 1.31885e-6 * ze + 1.8041e-3
     else:
         # Doesnt correct.
@@ -112,7 +112,7 @@ def correct_attenuation(reflectivity, radar_band):
 
 
 def correct_parallax(sr_x, sr_y, gpmset):
-    '''
+    """
     Adjust the geo-locations of the SR pixels. The `sr_xy` coordinates of the
     SR beam footprints need to be in the azimuthal equidistant projection of
     the ground radar. This ensures that the ground radar is fixed at
@@ -134,7 +134,7 @@ def correct_parallax(sr_x, sr_y, gpmset):
         of shape (nscans, nbeams, nbins).
     z_sr : :class:`numpy:numpy.ndarray`
         Array of SR bin altitudes of shape (nscans, nbeams, nbins).
-    '''
+    """
     r_sr_inv, alpha = gpmset.nbin.values, gpmset.nray.values
     # calculate height of bin
     z = r_sr_inv * np.cos(np.deg2rad(alpha))[..., np.newaxis]
@@ -163,10 +163,8 @@ def correct_parallax(sr_x, sr_y, gpmset):
     return sr_xp, sr_yp, z_sr
 
 
-def correct_refraction(elevation: float,
-                       n0: float=1.000313,
-                       k: float=5/4) -> float:
-    '''
+def correct_refraction(elevation: float, n0: float = 1.000313, k: float = 5 / 4) -> float:
+    """
     Atmospheric refraction correction. Eq. 9 and 10 from Holleman and
     Huuskonen (2013), doi:10.1002/rds.20030.
 
@@ -183,14 +181,14 @@ def correct_refraction(elevation: float,
     ========
     refra: float
         Refraction angle in deg.
-    '''
+    """
     θ = np.deg2rad(elevation)
-    refra = ((k - 1) * np.cos(θ) * (np.sqrt(np.sin(θ) ** 2 + 2 / (k - 1) * (n0 - 1)) - np.sin(θ)))
+    refra = (k - 1) * np.cos(θ) * (np.sqrt(np.sin(θ) ** 2 + 2 / (k - 1) * (n0 - 1)) - np.sin(θ))
     return np.rad2deg(refra)
 
 
 def get_offset(matchset, dr, nbins=200) -> float:
-    '''
+    """
     Compute the Offset between GR and GPM. It will try to compute the mode of
     the distribution and if it fails, then it will use the mean.
 
@@ -207,8 +205,8 @@ def get_offset(matchset, dr, nbins=200) -> float:
     ========
     offset: float
         Offset between GR and GPM
-    '''
-    offset = np.arange(-15, 15, .2, dtype=np.float64)
+    """
+    offset = np.arange(-15, 15, 0.2, dtype=np.float64)
     area = np.zeros_like(offset)
 
     refl_gpm = matchset.refl_gpm_grband.values.flatten().copy()
@@ -221,11 +219,11 @@ def get_offset(matchset, dr, nbins=200) -> float:
 
     pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
     for idx, a in enumerate(offset):
-        pdf_gr, _ = np.histogram(refl_gr  - a, range=[0, 50], bins=nbins, density=True)
+        pdf_gr, _ = np.histogram(refl_gr - a, range=[0, 50], bins=nbins, density=True)
         diff = np.min([pdf_gr, pdf_gpm], axis=0)
         area[idx] = np.sum(diff)
 
-    smoothed_area = np.convolve([1] * 12, area, 'same')
+    smoothed_area = np.convolve([1] * 12, area, "same")
     maxpos = np.argmax(smoothed_area)
     gr_offset = offset[maxpos]
     return gr_offset
@@ -246,7 +244,7 @@ def grid_displacement(field1, field2):
     displacement : two-tuple
          integers if pixels, otherwise floats. Result of the calculation
     """
-    #create copies of the data
+    # create copies of the data
     ige1 = np.ma.masked_invalid(10 ** (field1 / 10)).filled(0)
     ige2 = np.ma.masked_invalid(10 ** (field2 / 10)).filled(0)
 
@@ -261,8 +259,8 @@ def grid_displacement(field1, field2):
     imageCCorShift = np.fft.fftshift(imageCCor)
     row, col = ige1.shape
 
-    #find the peak in the correlation
-    yShift, xShift = np.unravel_index(np.argmax(imageCCorShift), (row,col))
+    # find the peak in the correlation
+    yShift, xShift = np.unravel_index(np.argmax(imageCCorShift), (row, col))
     yShift -= row // 2
     xShift -= col // 2
 
