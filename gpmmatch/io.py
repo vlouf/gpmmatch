@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 13/07/2020
+@date: 21/08/2020
 
     NoPrecipitationError
     _read_radar
@@ -90,6 +90,53 @@ def _read_radar(infile, refl_name=None):
             raise
 
     return radar
+
+
+def check_precip_in_domain(gpmset, grlon, grlat, rmax=150e3, rmin=20e3):
+    """
+    Check if there's GPM precipitation in the radar domain.
+
+    Parameters:
+    ===========
+    gpmset: xarray
+        Dataset containing the GPM data
+    grlon: float
+        Ground radar longitude
+    grlat: float
+        Ground radar latitude
+    rmax: float
+        Ground radar maximum range
+    rmin: float
+        Ground radar minimum range.
+
+    Returns:
+    ========
+    gpmtime0: datetime
+        Time of the closest measurement from ground radar site.
+    nprof: int
+        Number of GPM precipitation profiles in ground radar domain.
+    """
+    georef = pyproj.Proj(f"+proj=aeqd +lon_0={grlon} +lat_0={grlat} +ellps=WGS84")
+    gpmlat = gpmset.Latitude.values
+    gpmlon = gpmset.Longitude.values
+
+    xgpm, ygpm = georef(gpmlon, gpmlat)
+    rproj_gpm = (xgpm ** 2 + ygpm ** 2) ** 0.5
+
+    gr_domain = (rproj_gpm <= rmax) & (rproj_gpm >= rmin)
+    if gr_domain.sum() < 10:
+        raise NoPrecipitationError("GPM swath does not go through the radar domain.")
+
+    nprof = np.sum(gpmset.flagPrecip.values[gr_domain])
+    if nprof < 10:
+        raise NoPrecipitationError("No precipitation measured by GPM inside radar domain.")
+
+    newset = gpmset.merge({"range_from_gr": (("nscan", "nray"), rproj_gpm)})
+    gpmtime0 = newset.nscan.where(newset.range_from_gr == newset.range_from_gr.min()).values.astype("datetime64[s]")
+    gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
+    del newset
+
+    return gpmtime0, nprof
 
 
 def savedata(matchset, output_dir, outfilename):
