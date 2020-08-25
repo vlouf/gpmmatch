@@ -6,7 +6,11 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 29/07/2020
+@date: 25/08/2020
+
+.. autosummary::
+    :toctree: generated/
+
     volume_matching
     vmatch_multi_pass
 """
@@ -44,6 +48,7 @@ def volume_matching(
     radar_band="C",
     refl_name="corrected_reflectivity",
     correct_attenuation=True,
+    elevation_offset=None,
     fname_prefix=None,
 ):
     """
@@ -71,6 +76,8 @@ def volume_matching(
         Name of the reflectivity field in the ground radar data.
     correct_attenuation: bool
         Should we correct for C- or X-band ground radar attenuation
+    elevation_offset: float
+        Adding an offset in case the elevation angle needs to be corrected.
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
 
@@ -104,6 +111,9 @@ def volume_matching(
         gr_rmax = range_gr.max()
 
     elev_gr = np.unique(radar.elevation["data"])
+    if elevation_offset is not None:
+        print(f"Correcting the GR elevation by an offset of {elevation_offset}.")
+        elev_gr += elevation_offset
     xradar = radar.gate_x["data"]
     yradar = radar.gate_y["data"]
     tradar = cftime.num2pydate(radar.time["data"], radar.time["units"]).astype("datetime64")
@@ -321,6 +331,7 @@ def vmatch_multi_pass(
     refl_name="corrected_reflectivity",
     fname_prefix=None,
     correct_attenuation=True,
+    elevation_offset=None,
     output_dir=None,
 ):
     """
@@ -350,6 +361,8 @@ def vmatch_multi_pass(
         Name of the ground radar to use as label for the output file.
     correct_attenuation: bool
         Should we correct for C- or X-band ground radar attenuation
+    elevation_offset: float
+        Adding an offset in case the elevation angle needs to be corrected.
     output_dir: str
         Path to output directory.
     """
@@ -394,6 +407,7 @@ def vmatch_multi_pass(
             gr_beamwidth=gr_beamwidth,
             gr_rmax=gr_rmax,
             gr_refl_threshold=gr_refl_threshold,
+            elevation_offset=elevation_offset,
         )
     pass_offset = matchset.attrs["offset_found"]
     gr_offset = pass_offset
@@ -423,6 +437,7 @@ def vmatch_multi_pass(
                     gr_beamwidth=gr_beamwidth,
                     gr_rmax=gr_rmax,
                     gr_refl_threshold=gr_refl_threshold,
+                    elevation_offset=elevation_offset,
                 )
             # Save intermediary file.
             # _save(new_matchset, output_dirs["inter"])

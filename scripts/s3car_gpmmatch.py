@@ -3,7 +3,7 @@ Quality control of Radar calibration monitoring using ground clutter
 @creator: Valentin Louf <valentin.louf@bom.gov.au>
 @project: s3car-server
 @institution: Bureau of Meteorology
-@date: 21/08/2020
+@date: 25/08/2020
 
 .. autosummary::
     :toctree: generated/
@@ -40,6 +40,7 @@ def _mkdir(dir: str):
     """
     Make directory.
     """
+    # All of this may seems redundant but it's to catch errors in case of multiproc.
     if os.path.exists(dir):
         return None
 
@@ -185,6 +186,7 @@ def find_cases_and_generate_args(gpmfile):
             "refl_name": refl_name,
             "fname_prefix": f"{rid}",
             "output_dir": outpath,
+            "elevation_offset": ELEV_OFFSET,
         }
         processing_list.append(arguments)
 
@@ -232,10 +234,21 @@ if __name__ == "__main__":
         help="Output directory.",
         default="/srv/data/s3car-server/gpmmatch",
     )
+    parser.add_argument(
+        "-e",
+        "--elev-offset",
+        dest="elev_offset",
+        type=float,
+        help="Elevation offset to apply to ground radar (e_new = e_old + offset).",
+        default=0,
+    )
 
     args = parser.parse_args()
     INFILE = args.infile
     OUTPATH = args.outdir
+    ELEV_OFFSET = args.elev_offset
+    if ELEV_OFFSET == 0:
+        ELEV_OFFSET = None
 
     if not os.path.exists(OUTPATH):
         raise FileNotFoundError(f"Output directory {OUTPATH} does not exists.")
