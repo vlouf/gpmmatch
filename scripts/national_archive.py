@@ -4,7 +4,11 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 24/07/2020
+@date: 25/08/2020
+
+.. autosummary::
+    :toctree: generated/
+
     _mkdir
     load_national_archive_info
     remove
@@ -250,15 +254,18 @@ def buffer(gpmfile, date, rid):
         return None
 
     try:
-        _ = gpmmatch.vmatch_multi_pass(gpmfile,
-                                       grfile,
-                                       gr_beamwidth=beamwidth,
-                                       radar_band=band,
-                                       refl_name=refl_name,
-                                       fname_prefix=rid,
-                                       gr_offset=GR_OFFSET,
-                                       gr_refl_threshold=GR_THLD,
-                                       output_dir=OUTPATH)
+        _ = gpmmatch.vmatch_multi_pass(
+                gpmfile,
+                grfile,
+                gr_beamwidth=beamwidth,
+                radar_band=band,
+                refl_name=refl_name,
+                fname_prefix=rid,
+                gr_offset=GR_OFFSET,
+                gr_refl_threshold=GR_THLD,
+                output_dir=OUTPATH,
+                elevation_offset=ELEV_OFFSET,
+            )
     except NoRainError:
         pass
     except Exception:
@@ -325,11 +332,20 @@ if __name__ == "__main__":
         type=float,
         help='Ground radar reflectivity offset to substract Z1=Z0-o.',
         default=0)
+    parser.add_argument(
+        "-e",
+        "--elev-offset",
+        dest="elev_offset",
+        type=float,
+        help="Elevation offset to apply to ground radar (e_new = e_old + offset).",
+        default=0,
+    )
 
     args = parser.parse_args()
     RID = args.rid
     GR_THLD = args.grthld
     GR_OFFSET = args.offset
+    ELEV_OFFSET = args.elev_offset
 
     if args.outdir is None:
         OUTPATH = os.path.join(os.getcwd(), f'{RID}')
