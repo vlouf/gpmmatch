@@ -332,6 +332,8 @@ if __name__ == "__main__":
     GR_THLD = args.grthld
     GR_OFFSET = args.offset
     ELEV_OFFSET = args.elev_offset
+    if ELEV_OFFSET == 0:
+        ELEV_OFFSET = None
 
     if args.outdir is None:
         OUTPATH = os.path.join(os.getcwd(), f"{RID}")
