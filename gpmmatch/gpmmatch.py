@@ -278,6 +278,8 @@ def volume_matching(
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
     dr = int(radar.range['data'][1] - radar.range['data'][0])
     offset = get_offset(matchset, dr)
+    if np.abs(offset) > 14:
+        raise ValueError(f"Offset of {offset} dB for {grfile} too big to mean anything.")
 
     radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
     radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
