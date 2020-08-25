@@ -1,4 +1,4 @@
-'''
+"""
 GADI driver script for the volume matching of ground radar and GPM satellite.
 
 @title: national_archive
@@ -18,7 +18,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
     extract_zip
     buffer
     main
-'''
+"""
 import os
 import re
 import glob
@@ -86,24 +86,24 @@ def check_reflectivity_field_name(infile: str) -> str:
     """
     radar = pyart.aux_io.read_odim_h5(infile, file_field_names=True)
 
-    for field_name in ['DBZH_CLEAN', 'DBZH', 'TH', 'FIELD_ERROR']:
+    for field_name in ["DBZH_CLEAN", "DBZH", "TH", "FIELD_ERROR"]:
         try:
-            _ = radar.fields[field_name]['data']
+            _ = radar.fields[field_name]["data"]
             break
         except Exception:
             continue
 
-    if field_name == 'FIELD_ERROR':
-        raise KeyError(f'Reflectivity field name not found in {infile}.')
+    if field_name == "FIELD_ERROR":
+        raise KeyError(f"Reflectivity field name not found in {infile}.")
 
     del radar
     return field_name
 
 
 def remove(flist: list):
-    '''
+    """
     Remove file if it exists.
-    '''
+    """
     flist = [f for f in flist if f is not None]
     for f in flist:
         try:
@@ -114,7 +114,7 @@ def remove(flist: list):
 
 
 def get_radar_archive_file(date, rid):
-    '''
+    """
     Return the archive containing the radar file for a given radar ID and a
     given date.
     Parameters:
@@ -125,8 +125,8 @@ def get_radar_archive_file(date, rid):
     ========
     file: str
         Radar archive if it exists at the given date.
-    '''
-    datestr = date.strftime('%Y%m%d')
+    """
+    datestr = date.strftime("%Y%m%d")
     file = f"/g/data/rq0/level_1/odim_pvol/{rid}/{date.year}/vol/{rid}_{datestr}.pvol.zip"
     if not os.path.exists(file):
         return None
@@ -135,7 +135,7 @@ def get_radar_archive_file(date, rid):
 
 
 def get_radar_band(rid: int) -> str:
-    '''
+    """
     Get radar frequency-band information from the Australian radar network.
 
     Parameter:
@@ -147,18 +147,18 @@ def get_radar_band(rid: int) -> str:
     ========
     band: str
         Radar frequency band ('S' or 'C')
-    '''
+    """
     df = load_national_archive_info()
-    pos = (df.id == int(rid))
+    pos = df.id == int(rid)
     band = df.band[pos].values[0]
     if type(band) is not str:
-        raise TypeError(f'Frequency band should be a str, not a {type(band)}.')
+        raise TypeError(f"Frequency band should be a str, not a {type(band)}.")
 
     return band
 
 
 def get_radar_beamwidth(rid: int) -> float:
-    '''
+    """
     Get radar beamwidth information from the Australian radar network.
 
     Parameter:
@@ -170,15 +170,15 @@ def get_radar_beamwidth(rid: int) -> float:
     ========
     beamwidth: float
         Radar beamwidth.
-    '''
+    """
     df = load_national_archive_info()
-    pos = (df.id == int(rid))
+    pos = df.id == int(rid)
     beamwidth = df.beamwidth[pos].values[0]
 
     return beamwidth
 
 
-def extract_zip(inzip, date, path='/scratch/kl02/vhl548/unzipdir'):
+def extract_zip(inzip, date, path="/scratch/kl02/vhl548/unzipdir"):
     """
     Extract file in a daily archive zipfile for a specific datetime.
 
@@ -196,15 +196,16 @@ def extract_zip(inzip, date, path='/scratch/kl02/vhl548/unzipdir'):
     grfile: str
         Output ground radar file.
     """
+
     def get_zipfile_name(namelist, date):
-        datestr = [re.findall('[0-9]{8}_[0-9]{6}', n)[0] for n in namelist]
-        timestamps = np.array([datetime.datetime.strptime(dt, '%Y%m%d_%H%M%S') for dt in datestr], dtype='datetime64')
+        datestr = [re.findall("[0-9]{8}_[0-9]{6}", n)[0] for n in namelist]
+        timestamps = np.array([datetime.datetime.strptime(dt, "%Y%m%d_%H%M%S") for dt in datestr], dtype="datetime64")
         pos = np.argmin(np.abs(timestamps - date.to_numpy()))
         delta = np.abs(pd.Timestamp(timestamps[pos]) - date).seconds
         grfile = namelist[pos]
 
         if delta >= 600:
-            raise FileNotFoundError('No file')
+            raise FileNotFoundError("No file")
 
         return grfile
 
@@ -219,7 +220,7 @@ def extract_zip(inzip, date, path='/scratch/kl02/vhl548/unzipdir'):
 
 
 def buffer(gpmfile, date, rid):
-    '''
+    """
     Driver function that extract the ground radar file from the national
     archive and then calls the volume matching function. Handles errors.
 
@@ -231,10 +232,10 @@ def buffer(gpmfile, date, rid):
         Timestamp of the closest overpass of GPM from the ground radar
     rid: str
         Groud radar identification
-    '''
+    """
     band = get_radar_band(rid)
-    if band not in ['S', 'C', 'X']:
-        raise ValueError(f'Improper radar band, should be S, C or X not {band}.')
+    if band not in ["S", "C", "X"]:
+        raise ValueError(f"Improper radar band, should be S, C or X not {band}.")
     beamwidth = get_radar_beamwidth(rid)
 
     inzip = get_radar_archive_file(date, rid)
@@ -244,7 +245,7 @@ def buffer(gpmfile, date, rid):
     try:
         grfile = extract_zip(inzip, date)
     except FileNotFoundError:
-        print(f'No ground {rid} radar file for {date}.')
+        print(f"No ground {rid} radar file for {date}.")
         return None
 
     try:
@@ -255,21 +256,21 @@ def buffer(gpmfile, date, rid):
 
     try:
         _ = gpmmatch.vmatch_multi_pass(
-                gpmfile,
-                grfile,
-                gr_beamwidth=beamwidth,
-                radar_band=band,
-                refl_name=refl_name,
-                fname_prefix=rid,
-                gr_offset=GR_OFFSET,
-                gr_refl_threshold=GR_THLD,
-                output_dir=OUTPATH,
-                elevation_offset=ELEV_OFFSET,
-            )
+            gpmfile,
+            grfile,
+            gr_beamwidth=beamwidth,
+            radar_band=band,
+            refl_name=refl_name,
+            fname_prefix=rid,
+            gr_offset=GR_OFFSET,
+            gr_refl_threshold=GR_THLD,
+            output_dir=OUTPATH,
+            elevation_offset=ELEV_OFFSET,
+        )
     except NoRainError:
         pass
     except Exception:
-        print(f'ERROR: {gpmfile}.')
+        print(f"ERROR: {gpmfile}.")
         traceback.print_exc()
 
     remove([grfile])
@@ -282,12 +283,14 @@ def main():
         rid = os.path.basename(config)[-6:-4]
         if rid != RID:
             continue
-        df = pd.read_csv(config, parse_dates=['date'], header=0, names=['date', 'name', 'lon', 'lat', 'nprof', 'source'])
+        df = pd.read_csv(
+            config, parse_dates=["date"], header=0, names=["date", "name", "lon", "lat", "nprof", "source"]
+        )
 
         argslist = []
         for n in range(len(df)):
-            if rid == '02' or rid == '01':
-                if 'Tasmania' in df.source[n]:
+            if rid == "02" or rid == "01":
+                if "Tasmania" in df.source[n]:
                     continue
             g = df.source[n]
             d = df.date[n]
@@ -299,39 +302,22 @@ def main():
 
 
 if __name__ == "__main__":
-    CONFIG_FILES = sorted(glob.glob('/scratch/kl02/vhl548/gpm_output/overpass/*.csv'))
+    CONFIG_FILES = sorted(glob.glob("/scratch/kl02/vhl548/gpm_output/overpass/*.csv"))
 
-     # Parse arguments
+    # Parse arguments
     parser_description = """GPM volume matching on the National archive data."""
     parser = argparse.ArgumentParser(description=parser_description)
+    parser.add_argument("-o", "--output", dest="outdir", type=str, help="Output directory.", default=None)
+    parser.add_argument("-r", "--rid", dest="rid", type=str, help="Radar ID.", default="02")
+    parser.add_argument("-g", "--gr-thld", dest="grthld", type=float, help="Radar reflectivity threshold.", default=10)
     parser.add_argument(
-        '-o',
-        '--output',
-        dest='outdir',
-        type=str,
-        help='Output directory.',
-        default=None)
-    parser.add_argument(
-        '-r',
-        '--rid',
-        dest='rid',
-        type=str,
-        help='Radar ID.',
-        default='02')
-    parser.add_argument(
-        '-g',
-        '--gr-thld',
-        dest='grthld',
+        "-f",
+        "--offset",
+        dest="offset",
         type=float,
-        help='Ground radar reflectivity threshold.',
-        default=10)
-    parser.add_argument(
-        '-f',
-        '--offset',
-        dest='offset',
-        type=float,
-        help='Ground radar reflectivity offset to substract Z1=Z0-o.',
-        default=0)
+        help="Ground radar reflectivity offset to substract Z1=Z0-o.",
+        default=0,
+    )
     parser.add_argument(
         "-e",
         "--elev-offset",
@@ -348,9 +334,9 @@ if __name__ == "__main__":
     ELEV_OFFSET = args.elev_offset
 
     if args.outdir is None:
-        OUTPATH = os.path.join(os.getcwd(), f'{RID}')
+        OUTPATH = os.path.join(os.getcwd(), f"{RID}")
     else:
-        OUTPATH = os.path.join(args.outdir, f'{RID}')
+        OUTPATH = os.path.join(args.outdir, f"{RID}")
     _mkdir(OUTPATH)
 
     main()
