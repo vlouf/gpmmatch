@@ -118,11 +118,6 @@ def get_ground_radar_file(date, rid):
     return grfile
 
 
-def load_radar_info():
-
-    return None
-
-
 def find_cases_and_generate_args(gpmfile):
     """
     Look for if there's GPM precipitation measurements within the domain of any
@@ -142,7 +137,7 @@ def find_cases_and_generate_args(gpmfile):
     processing_list: List[Dict]
         List containing the arguments necessary to call
     """
-    radar_infoset = load_radar_info()
+    radar_infoset = pd.read_csv(CONFIG_FILE)
     gpmset = gpmmatch.io.read_GPM(gpmfile)
     data = dict()
     processing_list = []
@@ -215,6 +210,7 @@ def main():
 
 if __name__ == "__main__":
     VOLS_ROOT_PATH = "/srv/data/s3car-server/vols"
+    CONFIG_FILE = "/srv/data/s3car-server/config/radar_site_list.csv"
     # Parse arguments
     parser_description = """GPM volume matching for s3car-server."""
     parser = argparse.ArgumentParser(description=parser_description)
