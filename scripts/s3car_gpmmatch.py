@@ -30,10 +30,7 @@ import pandas as pd
 import dask
 import dask.bag as db
 from gpmmatch import NoRainError
-
-
-class NoPrecipitationError(Exception):
-    pass
+from gpmmatch.io import NoPrecipitationError
 
 
 def _mkdir(dir: str):
@@ -149,7 +146,7 @@ def find_cases_and_generate_args(gpmfile):
         beamwidth = radar_infoset.beamwidth[n]
         band = radar_infoset.band[n]
         try:
-            nprof, gpmtime = gpmmatch.io.check_precip_in_domain(gpmset, grlon=grlon, grlat=grlat)
+            gpmtime, nprof = gpmmatch.io.check_precip_in_domain(gpmset, grlon=grlon, grlat=grlat)
         except NoPrecipitationError:
             print(f"No GPM precipitation in radar {rid} - {rname} domain.")
             continue
