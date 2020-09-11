@@ -32,6 +32,7 @@ import pyart
 import pyproj
 import cftime
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 from . import correct
@@ -136,9 +137,9 @@ def check_precip_in_domain(gpmset, grlon, grlat, rmax=150e3, rmin=20e3):
     newset = gpmset.merge({"range_from_gr": (("nscan", "nray"), rproj_gpm)})
     gpmtime0 = newset.nscan.where(newset.range_from_gr == newset.range_from_gr.min()).values.astype("datetime64[s]")
     gpmtime0 = gpmtime0[~np.isnat(gpmtime0)][0]
+    gpmtime = pd.Timestamp(gpmtime0)
     del newset
-
-    return gpmtime0, nprof
+    return gpmtime, nprof
 
 
 def data_load_and_checks(gpmfile, grfile, grfile2=None, refl_name=None, correct_attenuation=True, radar_band="C"):
