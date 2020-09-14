@@ -3,7 +3,7 @@ Quality control of Radar calibration monitoring using ground clutter
 @creator: Valentin Louf <valentin.louf@bom.gov.au>
 @project: s3car-server
 @institution: Bureau of Meteorology
-@date: 25/08/2020
+@date: 14/09/2020
 
 .. autosummary::
     :toctree: generated/
@@ -115,7 +115,7 @@ def get_ground_radar_file(date, rid):
     return grfile
 
 
-def find_cases_and_generate_args(gpmfile):
+def find_cases_and_generate_args(gpmfile: str):
     """
     Look for if there's GPM precipitation measurements within the domain of any
     radar of the australian network. If there is a potential match, then we
@@ -136,7 +136,6 @@ def find_cases_and_generate_args(gpmfile):
     """
     radar_infoset = pd.read_csv(CONFIG_FILE)
     gpmset = gpmmatch.io.read_GPM(gpmfile)
-    data = dict()
     processing_list = []
     for n in range(len(radar_infoset)):
         rid = radar_infoset.id[n]
@@ -148,12 +147,13 @@ def find_cases_and_generate_args(gpmfile):
         try:
             gpmtime, nprof = gpmmatch.io.check_precip_in_domain(gpmset, grlon=grlon, grlat=grlat)
         except NoPrecipitationError:
-            print(f"No GPM precipitation in radar {rid} - {rname} domain.")
             continue
 
         if nprof < 10:
             print(f"Not enough precipitation in domain for {rid} - {rname}")
             continue
+
+        print(f"GPM precipitation detected in radar {rid} - {rname} domain.")
 
         try:
             grfile = get_ground_radar_file(gpmtime, rid)
@@ -182,7 +182,7 @@ def find_cases_and_generate_args(gpmfile):
         }
         processing_list.append(arguments)
 
-    del gpmset
+    del gpmset  # Release memory
     return processing_list
 
 
