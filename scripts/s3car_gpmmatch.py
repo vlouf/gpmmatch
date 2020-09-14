@@ -100,7 +100,8 @@ def get_ground_radar_file(date, rid):
     # Input directory checks.
     input_dir = os.path.join(VOLS_ROOT_PATH, str(rid), datestr)
     if not os.path.exists(input_dir):
-        raise FileNotFoundError(f"Directory {input_dir} not found/does not exist for radar {rid} at {datestr}.")
+        print(f"Directory {input_dir} not found/does not exist for radar {rid} at {datestr}.")
+        return None
 
     namelist = sorted(glob.glob(os.path.join(input_dir, "*.h5")))
     datestr = [re.findall("[0-9]{8}_[0-9]{6}", n)[0] for n in namelist]
@@ -152,13 +153,15 @@ def find_cases_and_generate_args(gpmfile: str):
         if nprof < 10:
             print(f"Not enough precipitation in domain for {rid} - {rname}")
             continue
-
         print(f"GPM precipitation detected in radar {rid} - {rname} domain.")
 
         try:
             grfile = get_ground_radar_file(gpmtime, rid)
         except FileNotFoundError:
             traceback.print_exc()
+            continue
+
+        if grfile is None:
             continue
 
         try:
@@ -187,12 +190,15 @@ def find_cases_and_generate_args(gpmfile: str):
 
 
 def main():
+    print(f"Looking for precipitation in {INFILE}")
     processing_list = find_cases_and_generate_args(INFILE)
     if len(processing_list) == 0:
         print(f"Nothing found for {INFILE}. Doing nothing.")
         return None
+    print(f"Found {len(processing_list)} potential ground radar matches with {INFILE}.")
 
     for kwargs in processing_list:
+        print(f"Running gpmmatch for radar {kwargs['fname_prefix']}")
         try:
             _ = gpmmatch.vmatch_multi_pass(**kwargs)
         except NoRainError:
@@ -201,6 +207,7 @@ def main():
             print(f"ERROR: {kwargs}.")
             traceback.print_exc()
             continue
+    print("Volume matching completed.")
 
     return None
 
