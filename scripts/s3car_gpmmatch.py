@@ -208,6 +208,7 @@ def main():
 if __name__ == "__main__":
     VOLS_ROOT_PATH = "/srv/data/s3car-server/vols"
     CONFIG_FILE = "/srv/data/s3car-server/config/radar_site_list.csv"
+    ELEV_OFFSET = None
     # Parse arguments
     parser_description = """GPM volume matching for s3car-server."""
     parser = argparse.ArgumentParser(description=parser_description)
@@ -227,21 +228,10 @@ if __name__ == "__main__":
         help="Output directory.",
         default="/srv/data/s3car-server/gpmmatch",
     )
-    parser.add_argument(
-        "-e",
-        "--elev-offset",
-        dest="elev_offset",
-        type=float,
-        help="Elevation offset to apply to ground radar (e_new = e_old + offset).",
-        default=0,
-    )
 
     args = parser.parse_args()
     INFILE = args.infile
     OUTPATH = args.outdir
-    ELEV_OFFSET = args.elev_offset
-    if ELEV_OFFSET == 0:
-        ELEV_OFFSET = None
 
     if not os.path.exists(OUTPATH):
         raise FileNotFoundError(f"Output directory {OUTPATH} does not exists.")
