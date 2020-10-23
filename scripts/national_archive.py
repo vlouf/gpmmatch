@@ -63,9 +63,8 @@ def load_national_archive_info():
         Dataframe containing general information about the Australian radar
         Network (lat/lon, site name, frequency band and bandwith).
     """
-    location = os.path.dirname(os.path.realpath(__file__))
-    myfile = os.path.join(location, "data", "radar_site_list.csv")
-    df = pd.read_csv(myfile).drop_duplicates("id", keep="last").reset_index()
+    file = NATION_ARCHIVE_CONFIG
+    df = pd.read_csv(file).drop_duplicates("id", keep="last").reset_index()
 
     return df
 
@@ -100,7 +99,7 @@ def check_reflectivity_field_name(infile: str) -> str:
     return field_name
 
 
-def remove(flist: list):
+def remove(flist: list) -> None:
     """
     Remove file if it exists.
     """
@@ -113,7 +112,7 @@ def remove(flist: list):
     return None
 
 
-def get_radar_archive_file(date, rid):
+def get_radar_archive_file(date, rid: int) -> str:
     """
     Return the archive containing the radar file for a given radar ID and a
     given date.
@@ -127,7 +126,7 @@ def get_radar_archive_file(date, rid):
         Radar archive if it exists at the given date.
     """
     datestr = date.strftime("%Y%m%d")
-    file = f"/g/data/rq0/level_1/odim_pvol/{rid}/{date.year}/vol/{rid}_{datestr}.pvol.zip"
+    file = f"/g/data/rq0/level_1/odim_pvol/{rid:02}/{date.year}/vol/{rid:02}_{datestr}.pvol.zip"
     if not os.path.exists(file):
         return None
 
@@ -178,7 +177,7 @@ def get_radar_beamwidth(rid: int) -> float:
     return beamwidth
 
 
-def extract_zip(inzip, date, path="/scratch/kl02/vhl548/unzipdir"):
+def extract_zip(inzip: str, date, path: str="/scratch/kl02/vhl548/unzipdir") -> str:
     """
     Extract file in a daily archive zipfile for a specific datetime.
 
@@ -280,7 +279,7 @@ def buffer(gpmfile, date, rid):
 
 def main():
     for config in CONFIG_FILES:
-        rid = os.path.basename(config)[-6:-4]
+        rid = int(os.path.basename(config)[-6:-4])
         if rid != RID:
             continue
         df = pd.read_csv(
@@ -288,10 +287,7 @@ def main():
         )
 
         argslist = []
-        for n in range(len(df)):
-            if rid == "02" or rid == "01":
-                if "Tasmania" in df.source[n]:
-                    continue
+        for n in range(len(df)):            
             g = df.source[n]
             d = df.date[n]
             argslist.append((g, d, RID))
@@ -303,12 +299,15 @@ def main():
 
 if __name__ == "__main__":
     CONFIG_FILES = sorted(glob.glob("/scratch/kl02/vhl548/gpm_output/overpass/*.csv"))
+    NATION_ARCHIVE_CONFIG = os.path.expanduser("~/radar_site_list.csv")
+    if not os.path.isfile(NATION_ARCHIVE_CONFIG):
+        FileNotFoundError(f"National archive configuration file not found: {NATION_ARCHIVE_CONFIG}")
 
     # Parse arguments
     parser_description = """GPM volume matching on the National archive data."""
     parser = argparse.ArgumentParser(description=parser_description)
     parser.add_argument("-o", "--output", dest="outdir", type=str, help="Output directory.", default=None)
-    parser.add_argument("-r", "--rid", dest="rid", type=str, help="Radar ID.", default="02")
+    parser.add_argument("-r", "--rid", dest="rid", type=int, help="Radar ID.", default=2)
     parser.add_argument("-g", "--gr-thld", dest="grthld", type=float, help="Radar reflectivity threshold.", default=10)
     parser.add_argument(
         "-f",
