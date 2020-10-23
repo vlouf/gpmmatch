@@ -3,7 +3,7 @@ Quality control of Radar calibration monitoring using ground clutter
 @creator: Valentin Louf <valentin.louf@bom.gov.au>
 @project: s3car-server
 @institution: Bureau of Meteorology
-@date: 14/09/2020
+@date: 23/10/2020
 
 .. autosummary::
     :toctree: generated/
@@ -21,6 +21,8 @@ import datetime
 import warnings
 import traceback
 
+from typing import List, Dict
+
 import pyart
 import gpmmatch
 import numpy as np
@@ -33,7 +35,7 @@ from gpmmatch import NoRainError
 from gpmmatch.io import NoPrecipitationError
 
 
-def _mkdir(dir: str):
+def _mkdir(dir: str) -> None:
     """
     Make directory.
     """
@@ -79,7 +81,7 @@ def check_reflectivity_field_name(infile: str) -> str:
     return field_name
 
 
-def get_ground_radar_file(date, rid):
+def get_ground_radar_file(date, rid: int) -> str:
     """
     Return the archive containing the radar file for a given radar ID and a
     given date.
@@ -116,7 +118,7 @@ def get_ground_radar_file(date, rid):
     return grfile
 
 
-def find_cases_and_generate_args(gpmfile: str):
+def find_cases_and_generate_args(gpmfile: str) -> List[Dict]:
     """
     Look for if there's GPM precipitation measurements within the domain of any
     radar of the australian network. If there is a potential match, then we
@@ -189,7 +191,7 @@ def find_cases_and_generate_args(gpmfile: str):
     return processing_list
 
 
-def main():
+def main() -> None:
     print(f"Looking for precipitation in {INFILE}")
     processing_list = find_cases_and_generate_args(INFILE)
     if len(processing_list) == 0:
