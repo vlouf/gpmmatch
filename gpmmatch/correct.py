@@ -5,7 +5,7 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 21/08/2020
+@date: 23/10/2020
 
 .. autosummary::
     :toctree: generated/
@@ -13,8 +13,7 @@ Various utilities for correction and conversion of satellite data.
     compute_gaussian_curvature
     convert_sat_refl_to_gr_band
     correct_attenuation
-    correct_parallax
-    correct_refraction
+    correct_parallax    
     get_offset
     grid_displacement
 """
@@ -161,30 +160,6 @@ def correct_parallax(sr_x, sr_y, gpmset):
     sr_yp = sr_y[..., np.newaxis] - dy
 
     return sr_xp, sr_yp, z_sr
-
-
-def correct_refraction(elevation: float, n0: float = 1.000313, k: float = 5 / 4) -> float:
-    """
-    Atmospheric refraction correction. Eq. 9 and 10 from Holleman and
-    Huuskonen (2013), doi:10.1002/rds.20030.
-
-    Parameters:
-    ===========
-    elevation: float
-        Elevation angle in deg.
-    n0: float
-        Refractive index of air.
-    k: float
-        4/3 earth’s radius model.
-
-    Returns:
-    ========
-    refra: float
-        Refraction angle in deg.
-    """
-    θ = np.deg2rad(elevation)
-    refra = (k - 1) * np.cos(θ) * (np.sqrt(np.sin(θ) ** 2 + 2 / (k - 1) * (n0 - 1)) - np.sin(θ))
-    return np.rad2deg(refra)
 
 
 def get_offset(matchset, dr, nbins=200) -> float:
