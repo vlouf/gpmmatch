@@ -4,7 +4,7 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 25/08/2020
+@date: 23/10/2020
 
 .. autosummary::
     :toctree: generated/
@@ -177,7 +177,7 @@ def get_radar_beamwidth(rid: int) -> float:
     return beamwidth
 
 
-def extract_zip(inzip: str, date, path: str="/scratch/kl02/vhl548/unzipdir") -> str:
+def extract_zip(inzip: str, date, path: str = "/scratch/kl02/vhl548/unzipdir") -> str:
     """
     Extract file in a daily archive zipfile for a specific datetime.
 
@@ -218,7 +218,7 @@ def extract_zip(inzip: str, date, path: str="/scratch/kl02/vhl548/unzipdir") -> 
     return grfile
 
 
-def buffer(gpmfile, date, rid):
+def buffer(gpmfile: str, date, rid: str) -> None:
     """
     Driver function that extract the ground radar file from the national
     archive and then calls the volume matching function. Handles errors.
@@ -254,7 +254,7 @@ def buffer(gpmfile, date, rid):
         return None
 
     try:
-        _ = gpmmatch.vmatch_multi_pass(
+        gpmmatch.vmatch_multi_pass(
             gpmfile,
             grfile,
             gr_beamwidth=beamwidth,
@@ -277,17 +277,25 @@ def buffer(gpmfile, date, rid):
     return None
 
 
-def main():
-    for config in CONFIG_FILES:
-        rid = int(os.path.basename(config)[-6:-4])
+def main() -> None:
+    """
+    Read the overpass csv file for the given radar ID and generates all the
+    necessary arguments to call gpmmatch.
+    """
+    ovpass_list = glob.glob(os.path.join(ROOT_DIR, "overpass", "*.csv"))
+    if len(ovpass_list) == 0:
+        FileNotFoundError(f"No overpass configuration file found in {ROOT_DIR}.")
+
+    for overpass_file in ovpass_list:
+        rid = int(os.path.basename(overpass_file)[-6:-4])
         if rid != RID:
             continue
         df = pd.read_csv(
-            config, parse_dates=["date"], header=0, names=["date", "name", "lon", "lat", "nprof", "source"]
+            overpass_file, parse_dates=["date"], header=0, names=["date", "name", "lon", "lat", "nprof", "source"]
         )
 
         argslist = []
-        for n in range(len(df)):            
+        for n in range(len(df)):
             g = df.source[n]
             d = df.date[n]
             argslist.append((g, d, RID))
@@ -296,9 +304,11 @@ def main():
         _ = bag.compute()
         break
 
+    return None
+
 
 if __name__ == "__main__":
-    CONFIG_FILES = sorted(glob.glob("/scratch/kl02/vhl548/gpm_output/overpass/*.csv"))
+    ROOT_DIR = "/scratch/kl02/vhl548/s3car-server/gpmmatch"
     NATION_ARCHIVE_CONFIG = os.path.expanduser("~/radar_site_list.csv")
     if not os.path.isfile(NATION_ARCHIVE_CONFIG):
         FileNotFoundError(f"National archive configuration file not found: {NATION_ARCHIVE_CONFIG}")
@@ -335,7 +345,7 @@ if __name__ == "__main__":
         ELEV_OFFSET = None
 
     if args.outdir is None:
-        OUTPATH = os.path.join(os.getcwd(), f"{RID}")
+        OUTPATH = os.path.join(ROOT_DIR, "vmatch", f"{RID}")
     else:
         OUTPATH = os.path.join(args.outdir, f"{RID}")
     _mkdir(OUTPATH)
