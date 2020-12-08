@@ -125,6 +125,11 @@ def get_radar_archive_file(date, rid: int) -> str:
     file: str
         Radar archive if it exists at the given date.
     """
+    try:
+        date = pd.Timestamp(date)
+    except Exception:
+        traceback.print_exc()
+        pass
     datestr = date.strftime("%Y%m%d")
     file = f"/g/data/rq0/level_1/odim_pvol/{rid:02}/{date.year}/vol/{rid:02}_{datestr}.pvol.zip"
     if not os.path.exists(file):
@@ -239,6 +244,7 @@ def buffer(gpmfile: str, date, rid: str) -> None:
 
     inzip = get_radar_archive_file(date, rid)
     if inzip is None:
+        print(f"Couldn't get zip archive for {date} and radar {rid}.")
         return None
 
     try:
@@ -297,9 +303,15 @@ def main() -> None:
         argslist = []
         for n in range(len(df)):
             g = df.source[n]
-            d = df.date[n]
+            try:
+                d = pd.Timestamp(df.date[n])
+            except Exception:
+                continue
+            if d < SDATE:
+                continue
             argslist.append((g, d, RID))
-
+        
+        print(len(argslist))
         bag = db.from_sequence(argslist).starmap(buffer)
         _ = bag.compute()
         break
@@ -318,6 +330,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=parser_description)
     parser.add_argument("-o", "--output", dest="outdir", type=str, help="Output directory.", default=None)
     parser.add_argument("-r", "--rid", dest="rid", type=int, help="Radar ID.", default=2)
+    parser.add_argument("-s", "--sdate", dest="sdate", type=str, help="Start date", default="2017-01-01")
     parser.add_argument("-g", "--gr-thld", dest="grthld", type=float, help="Radar reflectivity threshold.", default=10)
     parser.add_argument(
         "-f",
@@ -338,6 +351,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     RID = args.rid
+    SDATE = pd.Timestamp(args.sdate)
     GR_THLD = args.grthld
     GR_OFFSET = args.offset
     ELEV_OFFSET = args.elev_offset
@@ -345,7 +359,7 @@ if __name__ == "__main__":
         ELEV_OFFSET = None
 
     if args.outdir is None:
-        OUTPATH = os.path.join(ROOT_DIR, "vmatch", f"{RID}")
+        OUTPATH = os.path.join(ROOT_DIR, f"{RID}")
     else:
         OUTPATH = os.path.join(args.outdir, f"{RID}")
     _mkdir(OUTPATH)
