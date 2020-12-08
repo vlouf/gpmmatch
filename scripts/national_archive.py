@@ -4,13 +4,14 @@ GADI driver script for the volume matching of ground radar and GPM satellite.
 @title: national_archive
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
-@date: 23/10/2020
+@date: 08/12/2020
 
 .. autosummary::
     :toctree: generated/
 
     _mkdir
     load_national_archive_info
+    check_reflectivity_field_name
     remove
     get_radar_archive_file
     get_radar_band
@@ -278,7 +279,7 @@ def buffer(gpmfile: str, date, rid: str) -> None:
         print(f"ERROR: {gpmfile}.")
         traceback.print_exc()
 
-    remove([grfile])
+    # remove([grfile])
 
     return None
 
@@ -310,7 +311,7 @@ def main() -> None:
             if d < SDATE:
                 continue
             argslist.append((g, d, RID))
-        
+
         print(len(argslist))
         bag = db.from_sequence(argslist).starmap(buffer)
         _ = bag.compute()
@@ -328,10 +329,38 @@ if __name__ == "__main__":
     # Parse arguments
     parser_description = """GPM volume matching on the National archive data."""
     parser = argparse.ArgumentParser(description=parser_description)
-    parser.add_argument("-o", "--output", dest="outdir", type=str, help="Output directory.", default=None)
-    parser.add_argument("-r", "--rid", dest="rid", type=int, help="Radar ID.", default=2)
-    parser.add_argument("-s", "--sdate", dest="sdate", type=str, help="Start date", default="2017-01-01")
-    parser.add_argument("-g", "--gr-thld", dest="grthld", type=float, help="Radar reflectivity threshold.", default=10)
+    parser.add_argument(
+        "-o",
+        "--output",
+        dest="outdir",
+        type=str,
+        help="Output directory for the volume matching technique.",
+        default=None,
+    )
+    parser.add_argument(
+        "-r",
+        "--rid",
+        dest="rid",
+        type=int,
+        help="Radar standard RAPIC Volume ID for the Australian National Archive.",
+        required=True,
+    )
+    parser.add_argument(
+        "-s",
+        "--sdate",
+        dest="sdate",
+        type=str,
+        help="Start date (format YYYY-MM-DD) for processing the volume matching",
+        default="2017-01-01",
+    )
+    parser.add_argument(
+        "-g",
+        "--gr-thld",
+        dest="grthld",
+        type=float,
+        help="Ground radar minimum reflectivity threshold for the volume matching technique.",
+        default=10,
+    )
     parser.add_argument(
         "-f",
         "--offset",
