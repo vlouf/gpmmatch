@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 25/08/2020
+@date: 11/01/2021
 
 .. autosummary::
     :toctree: generated/
@@ -110,7 +110,12 @@ def volume_matching(
     if gr_rmax is None:
         gr_rmax = range_gr.max()
 
-    elev_gr = np.unique(radar.elevation["data"])
+    # Change caused by the new scan strategy.
+    elev_gr = np.zeros(radar.nsweeps)
+    for n in range(radar.nsweeps):
+        _elev = radar.elevation['data'][radar.get_slice(n)]
+        elev_gr[n] = np.mean(_elev)
+
     if elevation_offset is not None:
         print(f"Correcting the GR elevation by an offset of {elevation_offset}.")
         elev_gr += elevation_offset
