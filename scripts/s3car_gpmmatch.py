@@ -105,7 +105,7 @@ def check_reflectivity_field_name(infile: str) -> str:
     return field_name
 
 
-def get_ground_radar_file(date, rid: int) -> str:
+def get_ground_radar_file(date: datetime.datetime, rid: int) -> str:
     """
     Return the archive containing the radar file for a given radar ID and a
     given date.
