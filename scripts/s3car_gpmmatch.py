@@ -3,14 +3,17 @@ Quality control of Radar calibration monitoring using ground clutter
 @creator: Valentin Louf <valentin.louf@bom.gov.au>
 @project: s3car-server
 @institution: Bureau of Meteorology
-@date: 23/10/2020
+@date: 16/02/2021
 
 .. autosummary::
     :toctree: generated/
 
-    NoPrecipitationError
+    _mkdir
+    buffer
+    check_reflectivity_field_name
+    get_ground_radar_file
     precip_in_domain
-    get_overpass_with_precip
+    find_cases_and_generate_args
     main
 """
 import os
@@ -26,11 +29,8 @@ from typing import List, Dict
 import pyart
 import gpmmatch
 import numpy as np
-import xarray as xr
 import pandas as pd
 
-import dask
-import dask.bag as db
 from gpmmatch import NoRainError
 from gpmmatch.io import NoPrecipitationError
 
@@ -51,6 +51,26 @@ def _mkdir(dir: str) -> None:
     return None
 
 
+def buffer(func):
+    """
+    Decorator to catch and kill error message.
+    """
+
+    def wrapper(*args, **kwargs):
+        try:
+            rslt = func(*args, **kwargs)
+        except OSError:
+            print(f"File invalid: {args}.")
+            return None
+        except Exception:
+            traceback.print_exc()
+            rslt = None
+        return rslt
+
+    return wrapper
+
+
+@buffer
 def check_reflectivity_field_name(infile: str) -> str:
     """
     Check reflectivity field name in the input radar file.
@@ -65,6 +85,10 @@ def check_reflectivity_field_name(infile: str) -> str:
     field_name: str
         Name of the reflectivity field in the input radar file.
     """
+    if os.stat(infile).st_size == 0:
+        print(f"File {infile} is empty.")
+        return None
+
     radar = pyart.aux_io.read_odim_h5(infile, file_field_names=True)
 
     for field_name in ["DBZH_CLEAN", "DBZH", "TH", "FIELD_ERROR"]:
@@ -170,6 +194,8 @@ def find_cases_and_generate_args(gpmfile: str) -> List[Dict]:
             refl_name = check_reflectivity_field_name(grfile)
         except KeyError:
             traceback.print_exc()
+            continue
+        if refl_name is None:
             continue
 
         outpath = os.path.join(OUTPATH, f"{rid}")
