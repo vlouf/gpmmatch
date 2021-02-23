@@ -60,7 +60,7 @@ def _mkdir(dir: str) -> None:
     return None
 
 
-def _read_radar(infile: str, refl_name: str=None) -> Any:
+def _read_radar(infile: str, refl_name: str = None) -> Any:
     """
     Read input radar file
 
@@ -96,7 +96,9 @@ def _read_radar(infile: str, refl_name: str=None) -> Any:
     return radar
 
 
-def check_precip_in_domain(gpmset: xr.Dataset, grlon: float, grlat: float, rmax: float=150e3, rmin: float=20e3) -> Tuple[pd.Timestamp, int]:
+def check_precip_in_domain(
+    gpmset: xr.Dataset, grlon: float, grlat: float, rmax: float = 150e3, rmin: float = 20e3
+) -> Tuple[pd.Timestamp, int]:
     """
     Check if there's GPM precipitation in the radar domain.
 
@@ -143,7 +145,14 @@ def check_precip_in_domain(gpmset: xr.Dataset, grlon: float, grlat: float, rmax:
     return gpmtime, nprof
 
 
-def data_load_and_checks(gpmfile: str, grfile: str, grfile2: str=None, refl_name: str=None, correct_attenuation: bool=True, radar_band: str="C") -> Tuple[Any, Any]:
+def data_load_and_checks(
+    gpmfile: str,
+    grfile: str,
+    grfile2: str = None,
+    refl_name: str = None,
+    correct_attenuation: bool = True,
+    radar_band: str = "C",
+) -> Tuple[Any, Any]:
     """
     Load GPM and Ground radar files and perform some initial checks:
     domains intersect, precipitation, time difference.
@@ -311,7 +320,7 @@ def get_ground_radar_attributes(grfile: str) -> Tuple[float, float, float, float
     return grlon, grlat, gralt, rmin, rmax
 
 
-def read_GPM(infile: str, refl_min_thld: float=0) -> xr.Dataset:
+def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
     """
     Read GPM data and organize them into a Dataset.
 
