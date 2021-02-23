@@ -26,20 +26,19 @@ import glob
 import zipfile
 import argparse
 import datetime
-import warnings
 import traceback
+from typing import List
 
 import pyart
 import numpy as np
 import pandas as pd
-import dask
 import dask.bag as db
 
 import gpmmatch
 from gpmmatch import NoRainError
 
 
-def _mkdir(dir: str):
+def _mkdir(dir: str) -> None:
     """
     Make directory.
     """
@@ -54,7 +53,7 @@ def _mkdir(dir: str):
     return None
 
 
-def load_national_archive_info():
+def load_national_archive_info() -> pd.DataFrame:
     """
     Load Australian national archive informations as a Dataframe.
 
@@ -100,7 +99,7 @@ def check_reflectivity_field_name(infile: str) -> str:
     return field_name
 
 
-def remove(flist: list) -> None:
+def remove(flist: List) -> None:
     """
     Remove file if it exists.
     """
@@ -183,7 +182,7 @@ def get_radar_beamwidth(rid: int) -> float:
     return beamwidth
 
 
-def extract_zip(inzip: str, date, path: str = "/scratch/kl02/vhl548/unzipdir") -> str:
+def extract_zip(inzip: str, date: pd.Timestamp, path: str = "/scratch/kl02/vhl548/unzipdir") -> str:
     """
     Extract file in a daily archive zipfile for a specific datetime.
 
@@ -224,7 +223,7 @@ def extract_zip(inzip: str, date, path: str = "/scratch/kl02/vhl548/unzipdir") -
     return grfile
 
 
-def buffer(gpmfile: str, date, rid: str) -> None:
+def buffer(gpmfile: str, date: pd.Timestamp, rid: str) -> None:
     """
     Driver function that extract the ground radar file from the national
     archive and then calls the volume matching function. Handles errors.
@@ -279,8 +278,6 @@ def buffer(gpmfile: str, date, rid: str) -> None:
         print(f"ERROR: {gpmfile}.")
         traceback.print_exc()
 
-    # remove([grfile])
-
     return None
 
 
@@ -315,7 +312,6 @@ def main() -> None:
         print(len(argslist))
         bag = db.from_sequence(argslist).starmap(buffer)
         _ = bag.compute()
-        break
 
     return None
 
