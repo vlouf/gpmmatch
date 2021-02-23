@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 21/08/2020
+@date: 24/02/2021
 
 .. autosummary::
     :toctree: generated/
@@ -26,6 +26,7 @@ import os
 import re
 import datetime
 import warnings
+from typing import Tuple, Any
 
 import h5py
 import pyart
@@ -43,7 +44,7 @@ class NoPrecipitationError(Exception):
     pass
 
 
-def _mkdir(dir):
+def _mkdir(dir: str) -> None:
     """
     Make directory. Might seem redundant but you might have concurrency issue
     when dealing with multiprocessing.
@@ -59,7 +60,7 @@ def _mkdir(dir):
     return None
 
 
-def _read_radar(infile, refl_name=None):
+def _read_radar(infile: str, refl_name: str=None) -> Any:
     """
     Read input radar file
 
@@ -95,7 +96,7 @@ def _read_radar(infile, refl_name=None):
     return radar
 
 
-def check_precip_in_domain(gpmset, grlon, grlat, rmax=150e3, rmin=20e3):
+def check_precip_in_domain(gpmset: xr.Dataset, grlon: float, grlat: float, rmax: float=150e3, rmin: float=20e3) -> Tuple[pd.Timestamp, int]:
     """
     Check if there's GPM precipitation in the radar domain.
 
@@ -142,7 +143,7 @@ def check_precip_in_domain(gpmset, grlon, grlat, rmax=150e3, rmin=20e3):
     return gpmtime, nprof
 
 
-def data_load_and_checks(gpmfile, grfile, grfile2=None, refl_name=None, correct_attenuation=True, radar_band="C"):
+def data_load_and_checks(gpmfile: str, grfile: str, grfile2: str=None, refl_name: str=None, correct_attenuation: bool=True, radar_band: str="C") -> Tuple[Any, Any]:
     """
     Load GPM and Ground radar files and perform some initial checks:
     domains intersect, precipitation, time difference.
@@ -275,7 +276,7 @@ def get_gpm_orbit(gpmfile: str) -> int:
     return int(orbit)
 
 
-def get_ground_radar_attributes(grfile: str) -> (float, float, float, float):
+def get_ground_radar_attributes(grfile: str) -> Tuple[float, float, float, float, float]:
     """
     Read the ground radar attributes, latitude/longitude, altitude, range
     min/max.
@@ -310,7 +311,7 @@ def get_ground_radar_attributes(grfile: str) -> (float, float, float, float):
     return grlon, grlat, gralt, rmin, rmax
 
 
-def read_GPM(infile, refl_min_thld=0):
+def read_GPM(infile: str, refl_min_thld: float=0) -> xr.Dataset:
     """
     Read GPM data and organize them into a Dataset.
 
@@ -423,7 +424,7 @@ def read_GPM(infile, refl_min_thld=0):
     return dset
 
 
-def read_radar(grfile, grfile2, refl_name, gpm_time):
+def read_radar(grfile: str, grfile2: str, refl_name: str, gpm_time: Any) -> Any:
     """
     Read ground radar data. If 2 files provided, then it will compute the
     displacement between these two files and then correct for advection the
@@ -524,7 +525,7 @@ def read_radar(grfile, grfile2, refl_name, gpm_time):
     return radar0
 
 
-def savedata(matchset, output_dir, outfilename):
+def savedata(matchset: xr.Dataset, output_dir: str, outfilename: str) -> None:
     """
     Save dataset as a netCDF4.
 
