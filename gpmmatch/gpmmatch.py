@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 11/01/2021
+@date: 26/02/2021
 
 .. autosummary::
     :toctree: generated/
@@ -25,7 +25,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from . import correct
 from .correct import get_offset
 from .io import data_load_and_checks
 from .io import savedata
@@ -374,7 +373,7 @@ def vmatch_multi_pass(
         Path to output directory.
     """
 
-    def _save(dset, output_directory):
+    def _save(dset: xr.Dataset, output_directory: str, debug: bool=False) -> None:
         """
         Generate multipass metadata and file name.
         """
@@ -382,6 +381,8 @@ def vmatch_multi_pass(
         matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
         outfilename = dset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
         savedata(dset, output_directory, outfilename)
+        if debug:
+            print(f"{os.path.basename(outfilename)} written for radar {fname_prefix}")
         return None
 
     counter = 0
@@ -469,5 +470,5 @@ def vmatch_multi_pass(
                 break
 
     # Save final iteration.
-    _save(matchset, output_dirs['final'])
+    _save(matchset, output_dirs['final'], debug=True)
     return None
