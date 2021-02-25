@@ -37,19 +37,19 @@ class NoRainError(Exception):
 
 
 def volume_matching(
-    gpmfile,
-    grfile,
-    grfile2=None,
-    gr_offset=0,
-    gr_beamwidth=1,
-    gr_rmax=None,
-    gr_refl_threshold=10,
-    radar_band="C",
-    refl_name="corrected_reflectivity",
-    correct_attenuation=True,
-    elevation_offset=None,
-    fname_prefix=None,
-):
+    gpmfile: str,
+    grfile: str,
+    grfile2: str = None,
+    gr_offset: float = 0,
+    gr_beamwidth: float = 1,
+    gr_rmax: float = None,
+    gr_refl_threshold: float = 10,
+    radar_band: str = "C",
+    refl_name: str = "corrected_reflectivity",
+    correct_attenuation: bool = True,
+    elevation_offset: float = None,
+    fname_prefix: str = None,
+) -> xr.Dataset:
     """
     Performs the volume matching of GPM satellite data to ground based radar.
 
@@ -112,7 +112,7 @@ def volume_matching(
     # Change caused by the new scan strategy.
     elev_gr = np.zeros(radar.nsweeps)
     for n in range(radar.nsweeps):
-        _elev = radar.elevation['data'][radar.get_slice(n)]
+        _elev = radar.elevation["data"][radar.get_slice(n)]
         elev_gr[n] = np.mean(_elev)
 
     if elevation_offset is not None:
@@ -127,7 +127,7 @@ def volume_matching(
     _, DT = np.meshgrid(radar.range["data"], deltat)
 
     # Substract offset to the ground radar reflectivity
-    ground_radar_reflectivity = (radar.fields[refl_name]["data"].copy().filled(np.NaN) - gr_offset)
+    ground_radar_reflectivity = radar.fields[refl_name]["data"].copy().filled(np.NaN) - gr_offset
     ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
     ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
 
@@ -160,9 +160,24 @@ def volume_matching(
     pir_gpm = np.ma.masked_invalid(pir_gpm)
 
     # Initialising output data.
-    datakeys = ['refl_gpm_raw', 'refl_gr_weigthed', 'refl_gpm_grband', 'pir_gpm', 'pir_gr',
-                'refl_gr_raw', 'std_refl_gpm', 'std_refl_gr', 'sample_gpm', 'reject_gpm',
-                'fmin_gpm', 'fmin_gr', 'sample_gr', 'reject_gr', 'volume_match_gpm', 'volume_match_gr']
+    datakeys = [
+        "refl_gpm_raw",
+        "refl_gr_weigthed",
+        "refl_gpm_grband",
+        "pir_gpm",
+        "pir_gr",
+        "refl_gr_raw",
+        "std_refl_gpm",
+        "std_refl_gr",
+        "sample_gpm",
+        "reject_gpm",
+        "fmin_gpm",
+        "fmin_gr",
+        "sample_gr",
+        "reject_gr",
+        "volume_match_gpm",
+        "volume_match_gr",
+    ]
 
     data = dict()
     for k in datakeys:
@@ -178,22 +193,27 @@ def volume_matching(
     delta_t = np.zeros((nprof, ntilt)) + np.NaN  # Timedelta of sample
 
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
-        if elev_gr[jj] - gr_beamwidth  / 2 < 0:
+        if elev_gr[jj] - gr_beamwidth / 2 < 0:
             # Beam partially in the ground.
             continue
 
-        epos = ((elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) &
-                (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2))
+        epos = (elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) & (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2)
         x[ii, jj] = np.mean(xsat[ii, epos])
         y[ii, jj] = np.mean(ysat[ii, epos])
         z[ii, jj] = np.mean(zsat[ii, epos])
 
-        data['sample_gpm'][ii, jj] = np.sum(epos)  # Nb of profiles in layer
-        data['volume_match_gpm'][ii, jj] = np.sum(volsat[ii, epos])  # Total GPM volume in layer
+        data["sample_gpm"][ii, jj] = np.sum(epos)  # Nb of profiles in layer
+        data["volume_match_gpm"][ii, jj] = np.sum(volsat[ii, epos])  # Total GPM volume in layer
 
         dz[ii, jj] = np.sum(epos) * gpmset.dr * np.cos(np.deg2rad(alpha[ii]))  # Thickness of the layer
-        ds[ii, jj] = np.deg2rad(gpmset.beamwidth) * np.mean((gpmset.altitude - zsat[ii, epos])) / np.cos(np.deg2rad(alpha[ii]))  # Width of layer
-        r[ii, jj] = (gpmset.earth_gaussian_radius + zsat[ii, jj]) * np.sin(s_sat[ii, jj] / gpmset.earth_gaussian_radius) / np.cos(np.deg2rad(elev_gr[jj]))
+        ds[ii, jj] = (
+            np.deg2rad(gpmset.beamwidth) * np.mean((gpmset.altitude - zsat[ii, epos])) / np.cos(np.deg2rad(alpha[ii]))
+        )  # Width of layer
+        r[ii, jj] = (
+            (gpmset.earth_gaussian_radius + zsat[ii, jj])
+            * np.sin(s_sat[ii, jj] / gpmset.earth_gaussian_radius)
+            / np.cos(np.deg2rad(elev_gr[jj]))
+        )
 
         if r[ii, jj] + ds[ii, jj] / 2 > gr_rmax:
             # More than half the sample is outside of the radar last bin.
@@ -202,11 +222,11 @@ def volume_matching(
         # Ground radar side:
         sl = radar.get_slice(jj)
         roi_gr_at_vol = np.sqrt((xradar[sl] - x[ii, jj]) ** 2 + (yradar[sl] - y[ii, jj]) ** 2)
-        rpos = (roi_gr_at_vol <= ds[ii, jj] / 2)
+        rpos = roi_gr_at_vol <= ds[ii, jj] / 2
         if np.sum(rpos) == 0:
             continue
 
-        w = volgr[sl][rpos] * np.exp(-(roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2)
+        w = volgr[sl][rpos] * np.exp(-((roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2))
 
         # Extract reflectivity for volume.
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
@@ -226,36 +246,36 @@ def volume_matching(
             continue
 
         # FMIN parameter.
-        data['fmin_gpm'][ii, jj] = np.sum(refl_gpm > 0) / len(refl_gpm)
-        data['fmin_gr'][ii, jj] = np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw)
+        data["fmin_gpm"][ii, jj] = np.sum(refl_gpm > 0) / len(refl_gpm)
+        data["fmin_gr"][ii, jj] = np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw)
 
         # GPM
-        data['refl_gpm_raw'][ii, jj] = np.mean(refl_gpm)
-        data['refl_gpm_grband'][ii, jj] = np.mean(refl_gpm_grband)
-        data['pir_gpm'][ii, jj] = np.mean(pir_gpm[ii, epos].flatten())
-        data['std_refl_gpm'][ii, jj] = np.std(refl_gpm)
-        data['reject_gpm'][ii, jj] = np.sum(epos) - np.sum(refl_gpm.mask)  # Number of rejected bins
+        data["refl_gpm_raw"][ii, jj] = np.mean(refl_gpm)
+        data["refl_gpm_grband"][ii, jj] = np.mean(refl_gpm_grband)
+        data["pir_gpm"][ii, jj] = np.mean(pir_gpm[ii, epos].flatten())
+        data["std_refl_gpm"][ii, jj] = np.std(refl_gpm)
+        data["reject_gpm"][ii, jj] = np.sum(epos) - np.sum(refl_gpm.mask)  # Number of rejected bins
 
         # Ground radar.
-        data['volume_match_gr'][ii, jj] = np.sum(volgr[sl][rpos])
-        data['refl_gr_weigthed'][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
-        data['refl_gr_raw'][ii, jj] = np.mean(refl_gr_raw)
-        data['pir_gr'][ii, jj] = np.mean(pir_gr[sl][rpos].flatten())
-        data['std_refl_gr'][ii, jj] = np.std(refl_gr_raw)
-        data['reject_gr'][ii, jj] = np.sum(rpos)
-        data['sample_gr'][ii, jj] = np.sum(~refl_gr_raw.mask)
+        data["volume_match_gr"][ii, jj] = np.sum(volgr[sl][rpos])
+        data["refl_gr_weigthed"][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
+        data["refl_gr_raw"][ii, jj] = np.mean(refl_gr_raw)
+        data["pir_gr"][ii, jj] = np.mean(pir_gr[sl][rpos].flatten())
+        data["std_refl_gr"][ii, jj] = np.std(refl_gr_raw)
+        data["reject_gr"][ii, jj] = np.sum(rpos)
+        data["sample_gr"][ii, jj] = np.sum(~refl_gr_raw.mask)
 
-    data['x'] = x
-    data['y'] = y
-    data['z'] = z
-    data['r'] = r
-    data['nprof'] = np.arange(nprof, dtype=np.int32)
-    data['ntilt'] = np.arange(ntilt, dtype=np.int32)
-    data['elevation_gr'] = elev_gr[:ntilt]
-    data['timedelta'] = delta_t
+    data["x"] = x
+    data["y"] = y
+    data["z"] = z
+    data["r"] = r
+    data["nprof"] = np.arange(nprof, dtype=np.int32)
+    data["ntilt"] = np.arange(ntilt, dtype=np.int32)
+    data["elevation_gr"] = elev_gr[:ntilt]
+    data["timedelta"] = delta_t
 
-    if np.sum((~np.isnan(data['refl_gpm_raw'])) & (~np.isnan(data['refl_gr_raw']))) < 20:
-        raise NoRainError('At least 20 sample points are required.')
+    if np.sum((~np.isnan(data["refl_gpm_raw"])) & (~np.isnan(data["refl_gr_raw"]))) < 20:
+        raise NoRainError("At least 20 sample points are required.")
 
     # Transform to xarray and build metadata
     match = dict()
@@ -280,66 +300,66 @@ def volume_matching(
     iscan, _, _ = np.where(ar == ar.min())
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
-    dr = int(radar.range['data'][1] - radar.range['data'][0])
+    dr = int(radar.range["data"][1] - radar.range["data"][0])
     offset = get_offset(matchset, dr)
     if np.abs(offset) > 14:
         raise ValueError(f"Offset of {offset} dB for {grfile} too big to mean anything.")
 
-    radar_start_time = cftime.num2pydate(radar.time['data'][0], radar.time['units']).isoformat()
-    radar_end_time = cftime.num2pydate(radar.time['data'][-1], radar.time['units']).isoformat()
-    date = cftime.num2pydate(radar.time['data'][0], radar.time['units']).strftime('%Y%m%d.%H%M')
+    radar_start_time = cftime.num2pydate(radar.time["data"][0], radar.time["units"]).isoformat()
+    radar_end_time = cftime.num2pydate(radar.time["data"][-1], radar.time["units"]).isoformat()
+    date = cftime.num2pydate(radar.time["data"][0], radar.time["units"]).strftime("%Y%m%d.%H%M")
     outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
 
-    matchset.attrs['offset_applied'] = gr_offset
-    matchset.attrs['offset_found'] = offset
-    matchset.attrs['final_offset'] = gr_offset + offset
-    matchset.attrs['estimated_calibration_offset'] = f'{offset:0.4} dB'
-    matchset.attrs['gpm_overpass_time'] = gpm_overpass_time
-    matchset.attrs['gpm_min_distance'] = np.round(gpm_mindistance)
-    matchset.attrs['gpm_orbit'] = gpmset.attrs['orbit']
-    matchset.attrs['radar_start_time'] = radar_start_time
-    matchset.attrs['radar_end_time'] = radar_end_time
-    matchset.attrs['radar_longitude'] = radar.longitude['data'][0]
-    matchset.attrs['radar_latitude'] = radar.latitude['data'][0]
-    matchset.attrs['radar_range_res'] = dr
-    matchset.attrs['radar_beamwidth'] = gr_beamwidth
-    matchset.attrs['country'] = 'Australia'
-    matchset.attrs['creator_email'] = 'valentin.louf@bom.gov.au'
-    matchset.attrs['creator_name'] = 'Valentin Louf'
-    matchset.attrs['date_created'] = datetime.datetime.now().isoformat()
-    matchset.attrs['uuid'] = str(uuid.uuid4())
-    matchset.attrs['institution'] = 'Bureau of Meteorology'
-    matchset.attrs['references'] = 'doi:10.1175/JTECH-D-18-0007.1 ; doi:10.1175/JTECH-D-17-0128.1'
-    matchset.attrs['disclaimer'] = 'If you are using this data/technique for a scientific publication, please cite the papers given in references.'
-    matchset.attrs['naming_authority'] = 'au.org.nci'
-    matchset.attrs['summary'] = 'GPM volume matching technique.'
-    matchset.attrs['field_names'] = ", ".join(sorted([k for k, v in matchset.items()]))
-    matchset.attrs['filename'] = outfilename
+    matchset.attrs["offset_applied"] = gr_offset
+    matchset.attrs["offset_found"] = offset
+    matchset.attrs["final_offset"] = gr_offset + offset
+    matchset.attrs["estimated_calibration_offset"] = f"{offset:0.4} dB"
+    matchset.attrs["gpm_overpass_time"] = gpm_overpass_time
+    matchset.attrs["gpm_min_distance"] = np.round(gpm_mindistance)
+    matchset.attrs["gpm_orbit"] = gpmset.attrs["orbit"]
+    matchset.attrs["radar_start_time"] = radar_start_time
+    matchset.attrs["radar_end_time"] = radar_end_time
+    matchset.attrs["radar_longitude"] = radar.longitude["data"][0]
+    matchset.attrs["radar_latitude"] = radar.latitude["data"][0]
+    matchset.attrs["radar_range_res"] = dr
+    matchset.attrs["radar_beamwidth"] = gr_beamwidth
+    matchset.attrs["country"] = "Australia"
+    matchset.attrs["creator_email"] = "valentin.louf@bom.gov.au"
+    matchset.attrs["creator_name"] = "Valentin Louf"
+    matchset.attrs["date_created"] = datetime.datetime.now().isoformat()
+    matchset.attrs["uuid"] = str(uuid.uuid4())
+    matchset.attrs["institution"] = "Bureau of Meteorology"
+    matchset.attrs["references"] = "doi:10.1175/JTECH-D-18-0007.1 ; doi:10.1175/JTECH-D-17-0128.1"
+    matchset.attrs["disclaimer"] = "If you are using this data/technique for a scientific publication, please cite the papers given in references."
+    matchset.attrs["naming_authority"] = "au.org.nci"
+    matchset.attrs["summary"] = "GPM volume matching technique."
+    matchset.attrs["field_names"] = ", ".join(sorted([k for k, v in matchset.items()]))
+    matchset.attrs["filename"] = outfilename
     try:
         history = f"Created by {matchset.attrs['creator_name']} on {os.uname()[1]} at {matchset.attrs['date_created']} using Py-ART."
     except AttributeError:  # Windows OS.
         history = f"Created by {matchset.attrs['creator_name']} at {matchset.attrs['date_created']} using Py-ART."
-    matchset.attrs['history'] = history
+    matchset.attrs["history"] = history
 
     del radar, gpmset
     return matchset
 
 
 def vmatch_multi_pass(
-    gpmfile,
-    grfile,
-    grfile2=None,
-    gr_offset=0,
-    gr_beamwidth=1,
-    gr_rmax=None,
-    gr_refl_threshold=10,
-    radar_band="C",
-    refl_name="corrected_reflectivity",
-    fname_prefix=None,
-    correct_attenuation=True,
-    elevation_offset=None,
-    output_dir=None,
-):
+    gpmfile: str,
+    grfile: str,
+    grfile2: str = None,
+    gr_offset: float = 0,
+    gr_beamwidth: float = 1,
+    gr_rmax: float = None,
+    gr_refl_threshold: float = 10,
+    radar_band: str = "C",
+    refl_name: str = "corrected_reflectivity",
+    correct_attenuation: bool = True,
+    elevation_offset: float = None,    
+    fname_prefix: str = None,
+    output_dir: str = None,
+) -> None:
     """
     Multi-pass volume matching with automatic offset computation.
 
@@ -373,13 +393,13 @@ def vmatch_multi_pass(
         Path to output directory.
     """
 
-    def _save(dset: xr.Dataset, output_directory: str, debug: bool=False) -> None:
+    def _save(dset: xr.Dataset, output_directory: str, debug: bool = False) -> None:
         """
         Generate multipass metadata and file name.
         """
-        dset.attrs['iteration_number'] = counter
-        matchset.attrs['offset_history'] = ",".join([f'{float(i):0.3}' for i in offset_keeping_track])
-        outfilename = dset.attrs['filename'].replace('.nc', f'.pass{counter}.nc')
+        dset.attrs["iteration_number"] = counter
+        matchset.attrs["offset_history"] = ",".join([f"{float(i):0.3}" for i in offset_keeping_track])
+        outfilename = dset.attrs["filename"].replace(".nc", f".pass{counter}.nc")
         savedata(dset, output_directory, outfilename)
         if debug:
             print(f"{os.path.basename(outfilename)} written for radar {fname_prefix}")
@@ -388,15 +408,15 @@ def vmatch_multi_pass(
     counter = 0
     offset_thld = 0.5
     if fname_prefix is None:
-        fname_prefix = 'unknown_radar'
+        fname_prefix = "unknown_radar"
     if output_dir is None:
         output_dir = os.getcwd()
 
     # Generate output directories.
     output_dirs = {
-        'first': os.path.join(output_dir, 'first_pass'),
+        "first": os.path.join(output_dir, "first_pass"),
         # 'inter': os.path.join(output_dir, 'inter_pass'),
-        'final': os.path.join(output_dir, 'final_pass'),
+        "final": os.path.join(output_dir, "final_pass"),
     }
     [_mkdir(v) for k, v in output_dirs.items()]
 
@@ -470,5 +490,5 @@ def vmatch_multi_pass(
                 break
 
     # Save final iteration.
-    _save(matchset, output_dirs['final'], debug=True)
+    _save(matchset, output_dirs["final"], debug=True)
     return None
