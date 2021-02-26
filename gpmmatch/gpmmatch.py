@@ -11,6 +11,7 @@ latest version of TRMM data.
 .. autosummary::
     :toctree: generated/
 
+    NoRainError
     volume_matching
     vmatch_multi_pass
 """
@@ -424,6 +425,7 @@ def vmatch_multi_pass(
     }
     [_mkdir(v) for _, v in output_dirs.items()]
 
+    # Function arguments dictionnary.
     kwargs = {
         "gpmfile": gpmfile,
         "grfile": grfile,
@@ -460,21 +462,22 @@ def vmatch_multi_pass(
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 new_matchset = volume_matching(**kwargs)
-            # Save intermediary file.
-            # _save(new_matchset, output_dirs["inter"])
 
             # Check offset found.
             gr_offset = new_matchset.attrs["final_offset"]
             kwargs["gr_offset"] = gr_offset  # Update offset in kwargs for next pass
             pass_offset = new_matchset.attrs["offset_found"]
+
             if np.isnan(pass_offset):
                 # Solution converged already. Using previous iteration as final result.
                 counter -= 1
                 break
-
             if (np.abs(pass_offset) > np.abs(offset_keeping_track[-1])) and (counter > 1):
                 counter -= 1
                 break
+
+            # Save intermediary file.
+            # _save(new_matchset, output_dirs["inter"])
 
             # Pass results are good enough to continue.
             matchset = new_matchset
