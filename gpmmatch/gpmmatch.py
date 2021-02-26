@@ -356,7 +356,7 @@ def vmatch_multi_pass(
     radar_band: str = "C",
     refl_name: str = "corrected_reflectivity",
     correct_attenuation: bool = True,
-    elevation_offset: float = None,    
+    elevation_offset: float = None,
     fname_prefix: str = None,
     offset_thld: float = 0.5,
     output_dir: str = None,
@@ -408,8 +408,8 @@ def vmatch_multi_pass(
             print(f"{os.path.basename(outfilename)} written for radar {fname_prefix}")
         return None
 
-    counter = 0    
-    if fname_prefix is None:        
+    counter = 0
+    if fname_prefix is None:
         fname_prefix = "unknown_radar"
         print(f"No 'fname_prefix' defined. The output files will be named {fname_prefix}")
     if output_dir is None:
@@ -424,25 +424,27 @@ def vmatch_multi_pass(
     }
     [_mkdir(v) for _, v in output_dirs.items()]
 
+    kwargs = {
+        "gpmfile": gpmfile,
+        "grfile": grfile,
+        "grfile2": grfile2,
+        "gr_offset": gr_offset,
+        "radar_band": radar_band,
+        "refl_name": refl_name,
+        "fname_prefix": fname_prefix,
+        "correct_attenuation": correct_attenuation,
+        "gr_beamwidth": gr_beamwidth,
+        "gr_rmax": gr_rmax,
+        "gr_refl_threshold": gr_refl_threshold,
+        "elevation_offset": elevation_offset,
+    }
+
     # First pass
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        matchset = volume_matching(
-            gpmfile,
-            grfile,
-            grfile2=grfile2,
-            gr_offset=gr_offset,
-            radar_band=radar_band,
-            refl_name=refl_name,
-            fname_prefix=fname_prefix,
-            correct_attenuation=correct_attenuation,
-            gr_beamwidth=gr_beamwidth,
-            gr_rmax=gr_rmax,
-            gr_refl_threshold=gr_refl_threshold,
-            elevation_offset=elevation_offset,
-        )
+        matchset = volume_matching(**kwargs)
     pass_offset = matchset.attrs["offset_found"]
-    gr_offset = pass_offset
+    kwargs["gr_offset"] = pass_offset  # Update offset in kwargs for next pass
     offset_keeping_track = [pass_offset]
     final_offset_keeping_track = [matchset.attrs["final_offset"]]
     _save(matchset, output_dirs["first"])
@@ -457,25 +459,13 @@ def vmatch_multi_pass(
         for counter in range(1, 6):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                new_matchset = volume_matching(
-                    gpmfile,
-                    grfile,
-                    grfile2=grfile2,
-                    gr_offset=gr_offset,
-                    radar_band=radar_band,
-                    refl_name=refl_name,
-                    fname_prefix=fname_prefix,
-                    correct_attenuation=correct_attenuation,
-                    gr_beamwidth=gr_beamwidth,
-                    gr_rmax=gr_rmax,
-                    gr_refl_threshold=gr_refl_threshold,
-                    elevation_offset=elevation_offset,
-                )
+                new_matchset = volume_matching(**kwargs)
             # Save intermediary file.
             # _save(new_matchset, output_dirs["inter"])
 
             # Check offset found.
             gr_offset = new_matchset.attrs["final_offset"]
+            kwargs["gr_offset"] = gr_offset  # Update offset in kwargs for next pass
             pass_offset = new_matchset.attrs["offset_found"]
             if np.isnan(pass_offset):
                 # Solution converged already. Using previous iteration as final result.
