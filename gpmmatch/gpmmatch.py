@@ -302,7 +302,7 @@ def volume_matching(
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
     dr = int(radar.range["data"][1] - radar.range["data"][0])
     offset = get_offset(matchset, dr)
-    if np.abs(offset) > 14:
+    if np.abs(offset) > 15:
         raise ValueError(f"Offset of {offset} dB for {grfile} too big to mean anything.")
 
     radar_start_time = cftime.num2pydate(radar.time["data"][0], radar.time["units"]).isoformat()
@@ -358,10 +358,11 @@ def vmatch_multi_pass(
     correct_attenuation: bool = True,
     elevation_offset: float = None,    
     fname_prefix: str = None,
+    offset_thld: float = 0.5,
     output_dir: str = None,
 ) -> None:
     """
-    Multi-pass volume matching with automatic offset computation.
+    Multi-pass volume matching driver function with offset computation.
 
     Parameters:
     ----------
@@ -389,6 +390,8 @@ def vmatch_multi_pass(
         Should we correct for C- or X-band ground radar attenuation
     elevation_offset: float
         Adding an offset in case the elevation angle needs to be corrected.
+    offset_thld: float
+        Offset threshold (in dB) between GPM and GR to stop the iteration.
     output_dir: str
         Path to output directory.
     """
@@ -405,12 +408,13 @@ def vmatch_multi_pass(
             print(f"{os.path.basename(outfilename)} written for radar {fname_prefix}")
         return None
 
-    counter = 0
-    offset_thld = 0.5
-    if fname_prefix is None:
+    counter = 0    
+    if fname_prefix is None:        
         fname_prefix = "unknown_radar"
+        print(f"No 'fname_prefix' defined. The output files will be named {fname_prefix}")
     if output_dir is None:
         output_dir = os.getcwd()
+        print(f"No 'output_dir' defined. The output files will be saved {output_dir}")
 
     # Generate output directories.
     output_dirs = {
@@ -418,7 +422,7 @@ def vmatch_multi_pass(
         # 'inter': os.path.join(output_dir, 'inter_pass'),
         "final": os.path.join(output_dir, "final_pass"),
     }
-    [_mkdir(v) for k, v in output_dirs.items()]
+    [_mkdir(v) for _, v in output_dirs.items()]
 
     # First pass
     with warnings.catch_warnings():

@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 24/02/2021
+@date: 26/02/2021
 
 .. autosummary::
     :toctree: generated/
@@ -89,7 +89,7 @@ def _read_radar(infile: str, refl_name: str = None) -> Any:
         try:
             radar.fields[refl_name]
         except KeyError:
-            print(f"!!!! Problem with {infile} - No {refl_name} field does not exist. !!!!")
+            print(f"!!!! Problem with {infile} - {refl_name} field does not exist. !!!!")
             del radar
             raise
 
@@ -548,6 +548,6 @@ def savedata(matchset: xr.Dataset, output_dir: str, outfilename: str) -> None:
         Output file name.
     """
     outfile = os.path.join(output_dir, outfilename)
-    matchset.to_netcdf(outfile, encoding={k: {"zlib": True} for k in [k for k, v in matchset.items()]})
+    matchset.to_netcdf(outfile, encoding={k: {"zlib": True} for k in [k for k, _ in matchset.items()]})
 
     return None
