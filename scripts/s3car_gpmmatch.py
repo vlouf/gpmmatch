@@ -241,9 +241,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    VOLS_ROOT_PATH = "/srv/data/s3car-server/vols"
-    CONFIG_FILE = "/srv/data/s3car-server/config/radar_site_list.csv"
-    ELEV_OFFSET = None
+    VOLS_ROOT_PATH: str = "/srv/data/s3car-server/vols"
+    CONFIG_FILE: str = "/srv/data/s3car-server/config/radar_site_list.csv"
+    ELEV_OFFSET: float = None
     # Parse arguments
     parser_description = """GPM volume matching for s3car-server."""
     parser = argparse.ArgumentParser(description=parser_description)

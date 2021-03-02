@@ -13,7 +13,7 @@ Various utilities for correction and conversion of satellite data.
     compute_gaussian_curvature
     convert_sat_refl_to_gr_band
     correct_attenuation
-    correct_parallax    
+    correct_parallax
     get_offset
     grid_displacement
 """
