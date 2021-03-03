@@ -112,7 +112,7 @@ def remove(flist: List) -> None:
     return None
 
 
-def get_radar_archive_file(date, rid: int) -> str:
+def get_radar_archive_file(date: pd.Timestamp, rid: int) -> str:
     """
     Return the archive containing the radar file for a given radar ID and a
     given date.
