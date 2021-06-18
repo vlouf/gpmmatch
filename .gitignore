@@ -136,7 +136,7 @@ dmypy.json
 *.pbs.*
 *.png
  scripts/*ipynb
-notebook/*.zip
+notebooks/*.zip
 
 # OPOL related stuff
 *opol*
