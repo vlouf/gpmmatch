@@ -305,7 +305,7 @@ def main() -> None:
                 d = pd.Timestamp(df.date[n])
             except Exception:
                 continue
-            if d < SDATE:
+            if d < SDATE or d > EDATE:
                 continue
             argslist.append((g, d, RID))
 
@@ -350,6 +350,14 @@ if __name__ == "__main__":
         default="2017-01-01",
     )
     parser.add_argument(
+        "-e",
+        "--edate",
+        dest="edate",
+        type=str,
+        help="End date (format YYYY-MM-DD) for processing the volume matching",
+        default="2020-01-01",
+    )
+    parser.add_argument(
         "-g",
         "--gr-thld",
         dest="grthld",
@@ -377,6 +385,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     RID = args.rid
     SDATE = pd.Timestamp(args.sdate)
+    EDATE = pd.Timestamp(args.edate)
     GR_THLD = args.grthld
     GR_OFFSET = args.offset
     ELEV_OFFSET = args.elev_offset
