@@ -2,6 +2,12 @@
 
 Ground-radar vs satellite volume-matching. While build to work with GPM, it also works with the latest version of TRMM products.
 
+## How-to use?
+
+Please check the example in the notebooks directory. 
+
+For more advanced users, the `national_archive.py` in the scripts/ directory is to run GPMmatch in an automated way for the Australian Radar network available on NCI.
+
 ## Dependencies
 
 These dependencies are required to run *gpmmatch* (they will be automatically installed by pip):
