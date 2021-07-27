@@ -144,5 +144,4 @@ notebooks/*.zip
 # Data directories
 notebooks_private/
 test/
-notebooks/*/
 *_pass/
