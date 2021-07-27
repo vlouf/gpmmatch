@@ -271,7 +271,7 @@ def buffer(gpmfile: str, date: pd.Timestamp, rid: str) -> None:
             gr_refl_threshold=GR_THLD,
             output_dir=OUTPATH,
             elevation_offset=ELEV_OFFSET,
-            gr_rmax=150e3,
+#             gr_rmax=150e3,
         )
     except NoRainError:
         pass
