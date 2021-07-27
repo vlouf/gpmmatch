@@ -142,6 +142,7 @@ notebooks/*.zip
 *opol*
 
 # Data directories
+notebooks_private/
 test/
 notebooks/*/
 *_pass/
