@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 26/02/2021
+@date: 15/12/2021
 
 .. autosummary::
     :toctree: generated/
@@ -24,9 +24,12 @@ volume_matching.
 """
 import os
 import re
+import copy
 import datetime
 import warnings
+
 from typing import Tuple, Any
+from collections import OrderedDict
 
 import h5py
 import pyart
@@ -341,39 +344,48 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
     data = dict()
     date = dict()
     with h5py.File(infile, "r") as hid:
-        keys = hid["/NS"].keys()
+        try:
+            master_key = "NS"
+            keys = hid[f"/{master_key}"].keys()
+        except KeyError:
+            master_key = "FS"
+            keys = hid[f"/{master_key}"].keys()
+
         for k in keys:
             if k == "Latitude" or k == "Longitude":
-                dims = tuple(hid[f"/NS/{k}"].attrs["DimensionNames"].decode("UTF-8").split(","))
-                fv = hid[f"/NS/{k}"].attrs["_FillValue"]
-                data[k] = (dims, np.ma.masked_equal(hid[f"/NS/{k}"][:], fv))
+                dims = tuple(hid[f"/{master_key}/{k}"].attrs["DimensionNames"].decode("UTF-8").split(","))
+                fv = hid[f"/{master_key}/{k}"].attrs["_FillValue"]
+                data[k] = (dims, np.ma.masked_equal(hid[f"/{master_key}/{k}"][:], fv))
             else:
-                subkeys = hid[f"/NS/{k}"].keys()
+                try:
+                    subkeys = hid[f"/{master_key}/{k}"].keys()
+                except Exception:
+                    continue
                 for sk in subkeys:
-                    dims = tuple(hid[f"/NS/{k}/{sk}"].attrs["DimensionNames"].decode("UTF-8").split(","))
-                    fv = hid[f"/NS/{k}/{sk}"].attrs["_FillValue"]
+                    dims = tuple(hid[f"/{master_key}/{k}/{sk}"].attrs["DimensionNames"].decode("UTF-8").split(","))
+                    fv = hid[f"/{master_key}/{k}/{sk}"].attrs["_FillValue"]
 
                     if sk in ["Year", "Month", "DayOfMonth", "Hour", "Minute", "Second", "MilliSecond"]:
-                        date[sk] = np.ma.masked_equal(hid[f"/NS/{k}/{sk}"][:], fv)
+                        date[sk] = np.ma.masked_equal(hid[f"/{master_key}/{k}/{sk}"][:], fv)
                     elif sk in ["DayOfYear", "SecondOfDay"]:
                         continue
                     elif sk == "typePrecip":
                         # Simplify precipitation type
-                        data[sk] = (dims, hid[f"/NS/{k}/{sk}"][:] / 10000000)
-                    elif sk == "zFactorCorrected":
+                        data[sk] = (dims, hid[f"/{master_key}/{k}/{sk}"][:] / 10000000)
+                    elif sk in ["zFactorCorrected", "zFactorFinal", "zFactorMeasured"]:
                         # Reverse direction along the beam.
-                        gpm_refl = hid[f"/NS/{k}/{sk}"][:][:, :, ::-1]
+                        gpm_refl = hid[f"/{master_key}/{k}/{sk}"][:][:, :, ::-1]
                         gpm_refl[gpm_refl < 0] = np.NaN
                         data[sk] = (dims, np.ma.masked_invalid(np.ma.masked_less_equal(gpm_refl, refl_min_thld)))
                     elif sk == "flagPrecip":
-                        data[sk] = (dims, np.ma.masked_invalid(hid[f"/NS/{k}/{sk}"][:]).filled(0).astype(bool))
+                        data[sk] = (dims, np.ma.masked_invalid(hid[f"/{master_key}/{k}/{sk}"][:]).filled(0).astype(bool))
                     else:
-                        data[sk] = (dims, np.ma.masked_equal(hid[f"/NS/{k}/{sk}"][:], fv))
+                        data[sk] = (dims, np.ma.masked_equal(hid[f"/{master_key}/{k}/{sk}"][:], fv))
 
     try:
-        data["zFactorCorrected"]
-    except Exception:
-        raise KeyError(f"GPM Reflectivity not found in {infile}")
+        _ = data["zFactorCorrected"]
+    except KeyError:
+        data["zFactorCorrected"] = copy.deepcopy(data["zFactorFinal"])
 
     # Create Quality indicator.
     quality = np.zeros(data["heightBB"][-1].shape, dtype=np.int32)
@@ -415,7 +427,7 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
     data["nray"] = (("nray"), nray)
     data["nbin"] = (("nbin"), nbin)
 
-    dset = xr.Dataset(data)
+    dset = xr.Dataset(OrderedDict(sorted(data.items())))
 
     dset.nray.attrs = {"units": "degree", "description": "Deviation from Nadir"}
     dset.nbin.attrs = {"units": "m", "description": "Downward from 0: TOA to Earth ellipsoid."}
