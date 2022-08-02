@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 15/12/2021
+@date: 02/08/2022
 
 .. autosummary::
     :toctree: generated/
@@ -28,13 +28,12 @@ import copy
 import datetime
 import warnings
 
-from typing import Tuple, Any
+from typing import Tuple, Any, List
 from collections import OrderedDict
 
 import h5py
-import pyart
+import pyodim
 import pyproj
-import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -61,42 +60,6 @@ def _mkdir(dir: str) -> None:
         pass
 
     return None
-
-
-def _read_radar(infile: str, refl_name: str = None) -> Any:
-    """
-    Read input radar file
-
-    Parameters:
-    ===========
-    radar_file_list: str
-        List of radar files.
-    refl_name: str
-        Reflectivity field name.
-
-    Returns:
-    ========
-    radar: PyART.Radar
-        Radar data.
-    """
-    try:
-        if infile.lower().endswith((".h5", ".hdf", ".hdf5")):
-            radar = pyart.aux_io.read_odim_h5(infile, include_fields=[refl_name], file_field_names=True)
-        else:
-            radar = pyart.io.read(infile, include_fields=[refl_name])
-    except Exception:
-        print(f"!!!! Problem with {infile} !!!!")
-        raise
-
-    if refl_name is not None:
-        try:
-            radar.fields[refl_name]
-        except KeyError:
-            print(f"!!!! Problem with {infile} - {refl_name} field does not exist. !!!!")
-            del radar
-            raise
-
-    return radar
 
 
 def check_precip_in_domain(
@@ -150,8 +113,7 @@ def check_precip_in_domain(
 
 def data_load_and_checks(
     gpmfile: str,
-    grfile: str,
-    grfile2: str = None,
+    grfile: str,    
     refl_name: str = None,
     correct_attenuation: bool = True,
     radar_band: str = "C",
@@ -185,9 +147,7 @@ def data_load_and_checks(
         Pyart radar dataset.
     """
     if refl_name is None:
-        raise ValueError("Reflectivity field name not given.")
-    if grfile2 is None:
-        gpmtime0 = 0
+        raise ValueError("Reflectivity field name not given.")        
 
     gpmset = read_GPM(gpmfile)
     grlon, grlat, gralt, rmin, rmax = get_ground_radar_attributes(grfile)
@@ -255,13 +215,7 @@ def data_load_and_checks(
     gpmset.attrs["earth_gaussian_radius"] = gr_gaussian_radius
 
     # Time to read the ground radar data.
-    radar = read_radar(grfile, grfile2, refl_name, gpm_time=gpmtime0)
-    if correct_attenuation:
-        if radar_band in ["X", "C"]:  # Correct attenuation of X or C bands.
-            corr_refl = correct.correct_attenuation(radar.fields[refl_name]["data"], radar_band)
-            refl_dict = radar.fields.pop(refl_name)
-            refl_dict["data"] = corr_refl
-            radar.add_field(refl_name, refl_dict)
+    radar = read_radar(grfile, refl_name, correct_attenuation, radar_band)    
 
     return gpmset, radar
 
@@ -311,15 +265,16 @@ def get_ground_radar_attributes(grfile: str) -> Tuple[float, float, float, float
     rmax: float
         Radar maximum range.
     """
-    radar = _read_radar(grfile, None)
+    nradar = pyodim.read_odim(grfile)
+    radar = nradar[0].compute()
+    rmin = radar.range.values.min()
+    if rmin < 15e3:
+        rmin = 15e3
+    rmax = radar.range.values.max()
+    grlon = radar.attrs["longitude"]
+    grlat = radar.attrs["latitude"]
+    gralt = radar.attrs["height"]
 
-    rmax = radar.range["data"].max()
-    rmin = 15e3
-    grlon = radar.longitude["data"][0]
-    grlat = radar.latitude["data"][0]
-    gralt = radar.altitude["data"][0]
-
-    del radar
     return grlon, grlat, gralt, rmin, rmax
 
 
@@ -445,7 +400,7 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
     return dset
 
 
-def read_radar(grfile: str, grfile2: str, refl_name: str, gpm_time: Any) -> Any:
+def read_radar(grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False) -> List:
     """
     Read ground radar data. If 2 files provided, then it will compute the
     displacement between these two files and then correct for advection the
@@ -455,95 +410,25 @@ def read_radar(grfile: str, grfile2: str, refl_name: str, gpm_time: Any) -> Any:
     ===========
     grfile: str
         Ground radar input file.
-    grfile2: str (optionnal)
-        Second ground radar input file to compute grid displacement and
-        advection.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
-    gpm_time: np.datetime64[s]
-        Datetime of GPM overpass.
 
     Returns:
     ========
-    radar: pyart.core.Radar
-        Pyart radar dataset, corrected for advection if grfile2 provided.
-    """
-    try:
-        radar0 = _read_radar(grfile, refl_name)
-    except Exception:
-        raise
+    radar: List[xr.Dataset]
+        Radar dataset
+    """    
+    nradar = pyodim.read_odim(grfile, lazy_load=False)
+    if nradar[-1].elevation.max() > 80:
+        nradar.pop(-1)
 
-    if grfile2 is None:
-        return radar0
+    for idx in range(len(nradar)):
+        if correct_attenuation:
+            if radar_band in ["X", "C"]:  # Correct attenuation of X or C bands.
+                corr_refl = correct.correct_attenuation(nradar[idx][refl_name].values, radar_band)                
+                nradar[idx][refl_name].values = corr_refl
 
-    rtime = cftime.num2pydate(radar0.time["data"], radar0.time["units"]).astype("datetime64[s]")
-    timedelta = rtime - gpm_time
-
-    # grfile2 is not None here.
-    try:
-        radar1 = _read_radar(grfile, refl_name)
-    except Exception:
-        print("!!! Could not read 2nd ground radar file, only using the first one !!!")
-        return radar0
-
-    t0 = cftime.num2pydate(radar0.time["data"][0], radar0.time["units"])
-    t1 = cftime.num2pydate(radar1.time["data"][0], radar1.time["units"])
-    if t1 > t0:
-        dt = (t1 - t0).seconds
-    else:
-        # It's a datetime object, so if it's not orderly sequential,
-        # it will returns days of difference.
-        dt = (t0 - t1).seconds
-
-    if dt > 1800:
-        raise ValueError(
-            f"Cannot advect the ground radar data, the 2 input files are separated by more than 30min (dt = {dt}s)."
-        )
-
-    # TODO: Make domain a bit larger 100x100 km and then mask the part outside
-    # the 80x80 km window.
-    grid0 = pyart.map.grid_from_radars(
-        radar0,
-        grid_shape=(1, 801, 801),
-        grid_limits=((2500, 25000), (-80000, 80000), (-80000, 80000)),
-        fields=[refl_name],
-        gridding_algo="map_gates_to_grid",
-        constant_roi=1000,
-        weighting_function="Barnes2",
-    )
-
-    grid1 = pyart.map.grid_from_radars(
-        radar1,
-        grid_shape=(1, 801, 801),
-        grid_limits=((2500, 25000), (-80000, 80000), (-80000, 80000)),
-        fields=[refl_name],
-        gridding_algo="map_gates_to_grid",
-        constant_roi=1000,
-        weighting_function="Barnes2",
-    )
-
-    r0 = np.squeeze(grid0.fields[refl_name]["data"])
-    r1 = np.squeeze(grid1.fields[refl_name]["data"])
-    x = np.squeeze(grid0.point_x["data"])
-    y = np.squeeze(grid0.point_y["data"])
-    pos = np.sqrt(x ** 2 + y ** 2) < 20e3
-    r0[pos] = np.NaN
-    r1[pos] = np.NaN
-
-    displacement = correct.grid_displacement(r0, r1)
-    dxdt = 200 * displacement[0] / dt  # Grid resolution is 200m.
-    dydt = 200 * displacement[1] / dt
-
-    xoffset = dxdt * timedelta.astype(int)
-    yoffset = dydt * timedelta.astype(int)
-    xoffset = np.repeat(xoffset[:, np.newaxis], radar0.ngates, axis=1)
-    yoffset = np.repeat(yoffset[:, np.newaxis], radar0.ngates, axis=1)
-
-    radar0.gate_x["data"] = radar0.gate_x["data"] + xoffset
-    radar0.gate_y["data"] = radar0.gate_y["data"] + yoffset
-
-    del grid0, grid1, radar1
-    return radar0
+    return nradar
 
 
 def savedata(matchset: xr.Dataset, output_dir: str, outfilename: str) -> None:

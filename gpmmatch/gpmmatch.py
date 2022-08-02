@@ -6,12 +6,14 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 26/02/2021
+@date: 02/08/2022
 
 .. autosummary::
     :toctree: generated/
 
     NoRainError
+    get_radar_coordinates
+    get_gr_reflectivity
     volume_matching
     vmatch_multi_pass
 """
@@ -21,7 +23,6 @@ import datetime
 import warnings
 import itertools
 
-import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -35,6 +36,38 @@ from .default import get_metadata
 
 class NoRainError(Exception):
     pass
+
+
+def get_radar_coordinates(nradar, elevation_offset):
+    range_gr = nradar[0].range.values
+    elev_gr = np.array([r.elevation.values[0] for r in nradar])
+
+    if elevation_offset is not None:
+        print(f"Correcting the GR elevation by an offset of {elevation_offset}.")
+        elev_gr += elevation_offset
+
+    xradar = [r.x.values for r in nradar]
+    yradar = [r.y.values for r in nradar]
+    tradar = [r.time.values for r in nradar]
+
+    return range_gr, elev_gr, xradar, yradar, tradar
+
+
+def get_gr_reflectivity(nradar, refl_name, gr_offset, gr_refl_threshold):
+    ground_radar_reflectivity = [None] * len(nradar)
+    pir_gr = [None] * len(nradar)
+
+    get_dr = lambda x: x[1] - x[0]
+    for idx, radar in enumerate(nradar):
+        refl = radar[refl_name].values - gr_offset
+        refl[refl < gr_refl_threshold] = np.NaN
+        refl = np.ma.masked_invalid(refl)
+        ground_radar_reflectivity[idx] = refl
+
+        pir = 10 * np.log10(np.cumsum((10 ** (refl / 10)).filled(0), axis=1) * get_dr(radar.range.values))
+        pir_gr[idx] = pir
+
+    return ground_radar_reflectivity, pir_gr
 
 
 def volume_matching(
@@ -89,48 +122,22 @@ def volume_matching(
     if fname_prefix is None:
         fname_prefix = "unknown_radar"
 
-    gpmset, radar = data_load_and_checks(
+    gpmset, nradar = data_load_and_checks(
         gpmfile,
         grfile,
-        grfile2=grfile2,
         refl_name=refl_name,
         correct_attenuation=correct_attenuation,
         radar_band=radar_band,
     )
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
-    if radar.elevation["data"].max() >= 80:
-        ntilt = radar.nsweeps - 1
-    else:
-        ntilt = radar.nsweeps
+    ntilt = len(nradar)
 
-    # Extract ground radar data.
-    range_gr = radar.range["data"]
+    ground_radar_reflectivity, pir_gr = get_gr_reflectivity(nradar, refl_name, gr_offset, gr_refl_threshold)
+    range_gr, elev_gr, xradar, yradar, tradar = get_radar_coordinates(nradar, elevation_offset)
     dr = range_gr[1] - range_gr[0]
     if gr_rmax is None:
-        gr_rmax = range_gr.max()
-
-    # Change caused by the new scan strategy.
-    elev_gr = np.zeros(radar.nsweeps)
-    for n in range(radar.nsweeps):
-        _elev = radar.elevation["data"][radar.get_slice(n)]
-        elev_gr[n] = np.mean(_elev)
-
-    if elevation_offset is not None:
-        print(f"Correcting the GR elevation by an offset of {elevation_offset}.")
-        elev_gr += elevation_offset
-    xradar = radar.gate_x["data"]
-    yradar = radar.gate_y["data"]
-    tradar = cftime.num2pydate(radar.time["data"], radar.time["units"]).astype("datetime64")
-    deltat = tradar - gpmset.overpass_time.values
-
-    R, _ = np.meshgrid(radar.range["data"], radar.azimuth["data"])
-    _, DT = np.meshgrid(radar.range["data"], deltat)
-
-    # Substract offset to the ground radar reflectivity
-    ground_radar_reflectivity = radar.fields[refl_name]["data"].copy().filled(np.NaN) - gr_offset
-    ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
-    ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
+        gr_rmax = range_gr.max() if range_gr.max() < 250e3 else 250e3
 
     # Extract GPM data.
     position_precip_domain = gpmset.precip_in_gr_domain.values != 0
@@ -148,15 +155,12 @@ def volume_matching(
     for i in range(rsat.shape[0]):
         rsat[i, :] = gpmset.distance_from_sr.values
 
+    volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth)) ** 2  # km3
+
     refl_gpm_raw = np.ma.masked_invalid(gpmset.zFactorCorrected.values[position_precip_domain])
     reflectivity_gpm_grband = np.ma.masked_invalid(gpmset.reflectivity_grband.values[position_precip_domain])
 
-    volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth)) ** 2  # km3
-    volgr = 1e-9 * dr * (R * np.deg2rad(gr_beamwidth)) ** 2  # km3
-
     # Compute Path-integrated reflectivities
-    pir_gr = 10 * np.log10(np.cumsum((10 ** (ground_radar_reflectivity / 10)).filled(0), axis=1) * dr)
-    pir_gr = np.ma.masked_invalid(pir_gr)
     pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * 125)
     pir_gpm = np.ma.masked_invalid(pir_gpm)
 
@@ -221,20 +225,24 @@ def volume_matching(
             continue
 
         # Ground radar side:
-        sl = radar.get_slice(jj)
-        roi_gr_at_vol = np.sqrt((xradar[sl] - x[ii, jj]) ** 2 + (yradar[sl] - y[ii, jj]) ** 2)
+        deltat = tradar[jj] - gpmset.overpass_time.values
+        R, _ = np.meshgrid(nradar[jj].range.values, nradar[jj].azimuth.values)
+        _, DT = np.meshgrid(nradar[jj].range.values, deltat)
+        volgr = 1e-9 * dr * (R * np.deg2rad(gr_beamwidth)) ** 2  # km3
+
+        roi_gr_at_vol = np.sqrt((xradar[jj] - x[ii, jj]) ** 2 + (yradar[jj] - y[ii, jj]) ** 2)
         rpos = roi_gr_at_vol <= ds[ii, jj] / 2
         if np.sum(rpos) == 0:
             continue
 
-        w = volgr[sl][rpos] * np.exp(-((roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2))
+        w = volgr[rpos] * np.exp(-((roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2))
 
         # Extract reflectivity for volume.
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
         refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
-        refl_gr_raw = ground_radar_reflectivity[sl][rpos].flatten()
+        refl_gr_raw = ground_radar_reflectivity[jj][rpos].flatten()
         try:
-            delta_t[ii, jj] = np.max(DT[sl][rpos])
+            delta_t[ii, jj] = np.max(DT[rpos])
         except ValueError:
             # There's no data in the radar domain.
             continue
@@ -258,10 +266,10 @@ def volume_matching(
         data["reject_gpm"][ii, jj] = np.sum(epos) - np.sum(refl_gpm.mask)  # Number of rejected bins
 
         # Ground radar.
-        data["volume_match_gr"][ii, jj] = np.sum(volgr[sl][rpos])
+        data["volume_match_gr"][ii, jj] = np.sum(volgr[rpos])
         data["refl_gr_weigthed"][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
         data["refl_gr_raw"][ii, jj] = np.mean(refl_gr_raw)
-        data["pir_gr"][ii, jj] = np.mean(pir_gr[sl][rpos].flatten())
+        data["pir_gr"][ii, jj] = np.mean(pir_gr[jj][rpos].flatten())
         data["std_refl_gr"][ii, jj] = np.std(refl_gr_raw)
         data["reject_gr"][ii, jj] = np.sum(rpos)
         data["sample_gr"][ii, jj] = np.sum(~refl_gr_raw.mask)
@@ -301,14 +309,11 @@ def volume_matching(
     iscan, _, _ = np.where(ar == ar.min())
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
-    dr = int(radar.range["data"][1] - radar.range["data"][0])
     offset = get_offset(matchset, dr)
     if np.abs(offset) > 15:
         raise ValueError(f"Offset of {offset} dB for {grfile} too big to mean anything.")
 
-    radar_start_time = cftime.num2pydate(radar.time["data"][0], radar.time["units"]).isoformat()
-    radar_end_time = cftime.num2pydate(radar.time["data"][-1], radar.time["units"]).isoformat()
-    date = cftime.num2pydate(radar.time["data"][0], radar.time["units"]).strftime("%Y%m%d.%H%M")
+    date = pd.Timestamp(tradar[0][0]).strftime("%Y%m%d.%H%M")
     outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
 
     matchset.attrs["offset_applied"] = gr_offset
@@ -318,10 +323,10 @@ def volume_matching(
     matchset.attrs["gpm_overpass_time"] = gpm_overpass_time
     matchset.attrs["gpm_min_distance"] = np.round(gpm_mindistance)
     matchset.attrs["gpm_orbit"] = gpmset.attrs["orbit"]
-    matchset.attrs["radar_start_time"] = radar_start_time
-    matchset.attrs["radar_end_time"] = radar_end_time
-    matchset.attrs["radar_longitude"] = radar.longitude["data"][0]
-    matchset.attrs["radar_latitude"] = radar.latitude["data"][0]
+    matchset.attrs["radar_start_time"] = nradar[0].attrs["start_time"]
+    matchset.attrs["radar_end_time"] = nradar[0].attrs["end_time"]
+    matchset.attrs["radar_longitude"] = nradar[0].attrs["longitude"]
+    matchset.attrs["radar_latitude"] = nradar[0].attrs["latitude"]
     matchset.attrs["radar_range_res"] = dr
     matchset.attrs["radar_beamwidth"] = gr_beamwidth
     matchset.attrs["country"] = "Australia"
@@ -342,7 +347,6 @@ def volume_matching(
         history = f"Created by {matchset.attrs['creator_name']} at {matchset.attrs['date_created']} using Py-ART."
     matchset.attrs["history"] = history
 
-    del radar, gpmset
     return matchset
 
 
