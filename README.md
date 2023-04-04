@@ -1,6 +1,6 @@
 # 🛰️ gpmmatch 🛰️
 
-gpmmatch is a Python library for ground-radar vs satellite volume-matching. It is built to work with GPM, but also supports the latest version of TRMM products.
+`gpmmatch` is a Python library for ground-radar vs satellite volume-matching. It is built to work with GPM, but also supports the latest version of TRMM products.
 
 ## Libraries needed:
 
@@ -17,7 +17,7 @@ These libraries can be installed using pip:
 pip install numpy pandas netCDF4 xarray dask arm_pyart
 ```
 
-In addition, you will need to install the cluttercal and pyodim libraries from Github:
+In addition, you will need to install the `gpmmatch` and `pyodim` libraries from Github:
 ```
 pip install git+https://github.com/vlouf/gpmmatch.git
 pip install git+https://github.com/vlouf/pyodim.git`
@@ -29,7 +29,7 @@ An example Jupyter notebook is available in the `example` directory. This notebo
 
 ## References
 
-If you use gpmmatch for a scientific publication, please cite the following paper:
+If you use `gpmmatch` for a scientific publication, please cite the following paper:
 
 Louf, V., Protat, A., Warren, R. A., Collis, S. M., Wolff, D. B., Raunyiar, S., Jakob, C., & Petersen, W. A. (2019). An Integrated Approach to Weather Radar Calibration and Monitoring Using Ground Clutter and Satellite Comparisons. Journal of Atmospheric and Oceanic Technology, 36(1), 17–39. [10.1175/JTECH-D-18-0007.1](https://doi.org/10.1175/JTECH-D-18-0007.1)
 
