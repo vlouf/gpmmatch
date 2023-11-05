@@ -17,9 +17,10 @@ latest version of TRMM data.
 """
 import os
 import uuid
-import datetime
 import warnings
 import itertools
+
+from datetime import datetime, timezone
 
 import cftime
 import numpy as np
@@ -327,7 +328,7 @@ def volume_matching(
     matchset.attrs["country"] = "Australia"
     matchset.attrs["creator_email"] = "valentin.louf@bom.gov.au"
     matchset.attrs["creator_name"] = "Valentin Louf"
-    matchset.attrs["date_created"] = datetime.datetime.now().isoformat()
+    matchset.attrs["date_created"] = datetime.now(timezone.utc).isoformat()
     matchset.attrs["uuid"] = str(uuid.uuid4())
     matchset.attrs["institution"] = "Bureau of Meteorology"
     matchset.attrs["references"] = "doi:10.1175/JTECH-D-18-0007.1 ; doi:10.1175/JTECH-D-17-0128.1"
