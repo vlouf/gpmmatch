@@ -370,7 +370,7 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
                     elif sk == "typePrecip":
                         # Simplify precipitation type
                         data[sk] = (dims, hid[f"/{root}/{k}/{sk}"][:] / 10000000)
-                    elif sk == "zFactorCorrected":
+                    elif sk in ["zFactorCorrected", "zFactorFinal"]:
                         # Reverse direction along the beam.
                         gpm_refl = hid[f"/{root}/{k}/{sk}"][:][:, :, ::-1]
                         gpm_refl[gpm_refl < 0] = np.NaN
@@ -380,10 +380,11 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
                     else:
                         data[sk] = (dims, np.ma.masked_equal(hid[f"/{root}/{k}/{sk}"][:], fv))
 
-    try:
-        data["zFactorCorrected"]
-    except Exception:
-        raise KeyError(f"GPM Reflectivity not found in {infile}")
+    if not "zFactorCorrected" in data:
+        if "zFactorFinal" in data:
+            data["zFactorCorrected"] = data["zFactorFinal"]
+        else:
+            raise KeyError(f"GPM Reflectivity not found in {infile}")
 
     # Create Quality indicator.
     quality = np.zeros(data["heightBB"][-1].shape, dtype=np.int32)
