@@ -349,12 +349,16 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
             raise KeyError(f"Expected root (NS, FS) not found in {infile}")
         keys = hid[root].keys()
         for k in keys:
+            # hid_k can be Dataset or Group
+            hid_k = hid[f"/{root}/{k}"]
             if k == "Latitude" or k == "Longitude":
-                dims = tuple(hid[f"/{root}/{k}"].attrs["DimensionNames"].decode("UTF-8").split(","))
-                fv = hid[f"/{root}/{k}"].attrs["_FillValue"]
-                data[k] = (dims, np.ma.masked_equal(hid[f"/{root}/{k}"][:], fv))
-            else:
-                subkeys = hid[f"/{root}/{k}"].keys()
+                # Dataset
+                dims = tuple(hid_k.attrs["DimensionNames"].decode("UTF-8").split(","))
+                fv = hid_k.attrs["_FillValue"]
+                data[k] = (dims, np.ma.masked_equal(hid_k[:], fv))
+            elif isinstance(hid_k, h5py.Group):
+                # Group
+                subkeys = hid_k.keys()
                 for sk in subkeys:
                     dims = tuple(hid[f"/{root}/{k}/{sk}"].attrs["DimensionNames"].decode("UTF-8").split(","))
                     fv = hid[f"/{root}/{k}/{sk}"].attrs["_FillValue"]
