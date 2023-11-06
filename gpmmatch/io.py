@@ -341,34 +341,40 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
     data = dict()
     date = dict()
     with h5py.File(infile, "r") as hid:
-        keys = hid["/NS"].keys()
+        if "NS" in hid:
+            root = "NS"
+        elif "FS" in hid:
+            root = "FS"
+        else:
+            raise KeyError(f"Expected root (NS, FS) not found in {infile}")
+        keys = hid[root].keys()
         for k in keys:
             if k == "Latitude" or k == "Longitude":
-                dims = tuple(hid[f"/NS/{k}"].attrs["DimensionNames"].decode("UTF-8").split(","))
-                fv = hid[f"/NS/{k}"].attrs["_FillValue"]
-                data[k] = (dims, np.ma.masked_equal(hid[f"/NS/{k}"][:], fv))
+                dims = tuple(hid[f"/{root}/{k}"].attrs["DimensionNames"].decode("UTF-8").split(","))
+                fv = hid[f"/{root}/{k}"].attrs["_FillValue"]
+                data[k] = (dims, np.ma.masked_equal(hid[f"/{root}/{k}"][:], fv))
             else:
-                subkeys = hid[f"/NS/{k}"].keys()
+                subkeys = hid[f"/{root}/{k}"].keys()
                 for sk in subkeys:
-                    dims = tuple(hid[f"/NS/{k}/{sk}"].attrs["DimensionNames"].decode("UTF-8").split(","))
-                    fv = hid[f"/NS/{k}/{sk}"].attrs["_FillValue"]
+                    dims = tuple(hid[f"/{root}/{k}/{sk}"].attrs["DimensionNames"].decode("UTF-8").split(","))
+                    fv = hid[f"/{root}/{k}/{sk}"].attrs["_FillValue"]
 
                     if sk in ["Year", "Month", "DayOfMonth", "Hour", "Minute", "Second", "MilliSecond"]:
-                        date[sk] = np.ma.masked_equal(hid[f"/NS/{k}/{sk}"][:], fv)
+                        date[sk] = np.ma.masked_equal(hid[f"/{root}/{k}/{sk}"][:], fv)
                     elif sk in ["DayOfYear", "SecondOfDay"]:
                         continue
                     elif sk == "typePrecip":
                         # Simplify precipitation type
-                        data[sk] = (dims, hid[f"/NS/{k}/{sk}"][:] / 10000000)
+                        data[sk] = (dims, hid[f"/{root}/{k}/{sk}"][:] / 10000000)
                     elif sk == "zFactorCorrected":
                         # Reverse direction along the beam.
-                        gpm_refl = hid[f"/NS/{k}/{sk}"][:][:, :, ::-1]
+                        gpm_refl = hid[f"/{root}/{k}/{sk}"][:][:, :, ::-1]
                         gpm_refl[gpm_refl < 0] = np.NaN
                         data[sk] = (dims, np.ma.masked_invalid(np.ma.masked_less_equal(gpm_refl, refl_min_thld)))
                     elif sk == "flagPrecip":
-                        data[sk] = (dims, np.ma.masked_invalid(hid[f"/NS/{k}/{sk}"][:]).filled(0).astype(bool))
+                        data[sk] = (dims, np.ma.masked_invalid(hid[f"/{root}/{k}/{sk}"][:]).filled(0).astype(bool))
                     else:
-                        data[sk] = (dims, np.ma.masked_equal(hid[f"/NS/{k}/{sk}"][:], fv))
+                        data[sk] = (dims, np.ma.masked_equal(hid[f"/{root}/{k}/{sk}"][:], fv))
 
     try:
         data["zFactorCorrected"]
