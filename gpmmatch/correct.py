@@ -5,7 +5,7 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 23/10/2020
+@date: 28/11/2023
 
 .. autosummary::
     :toctree: generated/
@@ -189,6 +189,11 @@ def get_offset(matchset, dr, nbins=200) -> float:
     fmin = matchset.fmin_gr.values.flatten().copy()
 
     pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin != 1)
+    if (~pos).sum() == 0:  # Relaxing fmin parameter.
+        pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin < .9)
+    if (~pos).sum() == 0:
+        pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin < .7)
+
     refl_gpm[pos] = np.NaN
     refl_gr[pos] = np.NaN
 
