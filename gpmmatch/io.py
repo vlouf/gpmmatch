@@ -344,23 +344,25 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
     data = dict()
     date = dict()
     with h5py.File(infile, "r") as hid:
-        try:
+        if "NS" in hid:
             master_key = "NS"
-            keys = hid[f"/{master_key}"].keys()
-        except KeyError:
+        elif "FS" in hid:
             master_key = "FS"
-            keys = hid[f"/{master_key}"].keys()
+        else:
+            raise KeyError(f"Expected root (NS, FS) not found in {infile}")
+        keys = hid[master_key].keys()
 
         for k in keys:
+            # hid_k can be Dataset or Group
+            hid_k = hid[f"/{master_key}/{k}"]
             if k == "Latitude" or k == "Longitude":
-                dims = tuple(hid[f"/{master_key}/{k}"].attrs["DimensionNames"].decode("UTF-8").split(","))
-                fv = hid[f"/{master_key}/{k}"].attrs["_FillValue"]
-                data[k] = (dims, np.ma.masked_equal(hid[f"/{master_key}/{k}"][:], fv))
-            else:
-                try:
-                    subkeys = hid[f"/{master_key}/{k}"].keys()
-                except Exception:
-                    continue
+                # Dataset
+                dims = tuple(hid_k.attrs["DimensionNames"].decode("UTF-8").split(","))
+                fv = hid_k.attrs["_FillValue"]
+                data[k] = (dims, np.ma.masked_equal(hid_k[:], fv))
+            elif isinstance(hid_k, h5py.Group):
+                # Group
+                subkeys = hid_k.keys()
                 for sk in subkeys:
                     dims = tuple(hid[f"/{master_key}/{k}/{sk}"].attrs["DimensionNames"].decode("UTF-8").split(","))
                     fv = hid[f"/{master_key}/{k}/{sk}"].attrs["_FillValue"]
@@ -382,10 +384,11 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
                     else:
                         data[sk] = (dims, np.ma.masked_equal(hid[f"/{master_key}/{k}/{sk}"][:], fv))
 
-    try:
-        _ = data["zFactorCorrected"]
-    except KeyError:
-        data["zFactorCorrected"] = copy.deepcopy(data["zFactorFinal"])
+    if "zFactorCorrected" not in data:
+        if "zFactorFinal" in data:
+            data["zFactorCorrected"] = copy.deepcopy(data["zFactorFinal"])
+        else:
+            raise KeyError(f"GPM Reflectivity not found in {infile}")
 
     # Create Quality indicator.
     quality = np.zeros(data["heightBB"][-1].shape, dtype=np.int32)
