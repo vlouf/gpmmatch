@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 15/12/2021
+@date: 29/05/2025
 
 .. autosummary::
     :toctree: generated/
@@ -377,7 +377,7 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
                     elif sk in ["zFactorCorrected", "zFactorFinal", "zFactorMeasured"]:
                         # Reverse direction along the beam.
                         gpm_refl = hid[f"/{master_key}/{k}/{sk}"][:][:, :, ::-1]
-                        gpm_refl[gpm_refl < 0] = np.NaN
+                        gpm_refl[gpm_refl < 0] = np.nan
                         data[sk] = (dims, np.ma.masked_invalid(np.ma.masked_less_equal(gpm_refl, refl_min_thld)))
                     elif sk == "flagPrecip":
                         data[sk] = (dims, np.ma.masked_invalid(hid[f"/{master_key}/{k}/{sk}"][:]).filled(0).astype(bool))
@@ -530,8 +530,8 @@ def read_radar(grfile: str, grfile2: str, refl_name: str, gpm_time: Any) -> Any:
     x = np.squeeze(grid0.point_x["data"])
     y = np.squeeze(grid0.point_y["data"])
     pos = np.sqrt(x ** 2 + y ** 2) < 20e3
-    r0[pos] = np.NaN
-    r1[pos] = np.NaN
+    r0[pos] = np.nan
+    r1[pos] = np.nan
 
     displacement = correct.grid_displacement(r0, r1)
     dxdt = 200 * displacement[0] / dt  # Grid resolution is 200m.

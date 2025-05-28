@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 26/02/2021
+@date: 29/05/2025
 
 .. autosummary::
     :toctree: generated/
@@ -129,8 +129,8 @@ def volume_matching(
     _, DT = np.meshgrid(radar.range["data"], deltat)
 
     # Substract offset to the ground radar reflectivity
-    ground_radar_reflectivity = radar.fields[refl_name]["data"].copy().filled(np.NaN) - gr_offset
-    ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.NaN
+    ground_radar_reflectivity = radar.fields[refl_name]["data"].copy().filled(np.nan) - gr_offset
+    ground_radar_reflectivity[ground_radar_reflectivity < gr_refl_threshold] = np.nan
     ground_radar_reflectivity = np.ma.masked_invalid(ground_radar_reflectivity)
 
     # Extract GPM data.
@@ -183,7 +183,7 @@ def volume_matching(
 
     data = dict()
     for k in datakeys:
-        data[k] = np.zeros((nprof, ntilt)) + np.NaN
+        data[k] = np.zeros((nprof, ntilt)) + np.nan
 
     # For sake of simplicity, coordinates are just ndarray, they will be put in the 'data' dict after the matching process
     x = np.zeros((nprof, ntilt))  # x coordinate of sample
@@ -192,7 +192,7 @@ def volume_matching(
     r = np.zeros((nprof, ntilt))  # range of sample from ground radar
     dz = np.zeros((nprof, ntilt))  # depth of sample
     ds = np.zeros((nprof, ntilt))  # width of sample
-    delta_t = np.zeros((nprof, ntilt)) + np.NaN  # Timedelta of sample
+    delta_t = np.zeros((nprof, ntilt)) + np.nan  # Timedelta of sample
 
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
         if elev_gr[jj] - gr_beamwidth / 2 < 0:
@@ -242,9 +242,9 @@ def volume_matching(
 
         if len(refl_gpm) < 5 or len(refl_gr_raw) < 5:
             continue
-        if np.all(np.isnan(refl_gpm.filled(np.NaN))):
+        if np.all(np.isnan(refl_gpm.filled(np.nan))):
             continue
-        if np.all(np.isnan(refl_gr_raw.filled(np.NaN))):
+        if np.all(np.isnan(refl_gr_raw.filled(np.nan))):
             continue
 
         # FMIN parameter.
