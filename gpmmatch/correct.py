@@ -5,7 +5,7 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 28/11/2023
+@date: 29/05/2025
 
 .. autosummary::
     :toctree: generated/
@@ -194,8 +194,8 @@ def get_offset(matchset, dr, nbins=200) -> float:
     if (~pos).sum() == 0:
         pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin < .7)
 
-    refl_gpm[pos] = np.NaN
-    refl_gr[pos] = np.NaN
+    refl_gpm[pos] = np.nan
+    refl_gr[pos] = np.nan
 
     pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
     for idx, a in enumerate(offset):
