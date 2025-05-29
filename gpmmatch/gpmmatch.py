@@ -31,8 +31,6 @@ import xarray as xr
 
 from .correct import get_offset
 from .io import data_load_and_checks
-from .io import savedata
-from .io import _mkdir
 from .default import get_metadata
 
 
@@ -481,13 +479,19 @@ def vmatch_multi_pass(
         Generate multipass metadata and file name.
         """
         dset.attrs["iteration_number"] = counter
-        matchset.attrs["offset_history"] = ",".join([f"{float(i):0.3}" for i in offset_keeping_track])
-        outfilename = dset.attrs["filename"].replace(".nc", f".pass{counter}.nc")
-        savedata(dset, output_directory, outfilename)
+        dset.attrs["offset_history"] = ",".join([f"{float(i):0.3}" for i in offset_keeping_track])
+        filename = dset.attrs["filename"].replace(".nc", f".pass{counter}.nc")
+
+        outfilename = os.path.join(output_directory, filename)
+        print(f"Saving {os.path.basename(outfilename)} to {output_directory}.")
+        dset.to_netcdf(outfilename, encoding={k: {"zlib": True} for k in [k for k, _ in dset.items()]})
+
+        # Check if the file was created successfully.
         if os.path.exists(os.path.join(outfilename)):
             print(f"{os.path.basename(outfilename)} written to {output_directory}.")
         else:
-            raise FileNotFoundError(f"File {outfilename} not found in {output_directory}.")
+            print(f"Error writing {os.path.basename(outfilename)} to {output_directory}.")
+            raise FileNotFoundError(f"File {outfilename} could not be created.")
 
         return None
 
@@ -504,7 +508,7 @@ def vmatch_multi_pass(
         "first": os.path.join(output_dir, "first_pass"),
         "final": os.path.join(output_dir, "final_pass"),
     }
-    [_mkdir(v) for _, v in output_dirs.items()]
+    [os.makedirs(v, exist_ok=True) for _, v in output_dirs.items()]
 
     # Function arguments dictionnary.
     kwargs = {
@@ -565,5 +569,5 @@ def vmatch_multi_pass(
                 break
 
     # Save final iteration.
-    _save(matchset, output_dirs["final"], debug=True)
+    _save(matchset, output_dirs["final"])
     return None

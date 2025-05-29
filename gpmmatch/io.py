@@ -12,17 +12,14 @@ volume_matching.
     :toctree: generated/
 
     NoPrecipitationError
-    _read_radar
-    _mkdir
+    _read_radar    
     check_precip_in_domain
     data_load_and_checks
     get_ground_radar_attributes
     get_gpm_orbit
     read_GPM
     read_radars
-    savedata
 """
-import os
 import re
 import copy
 import datetime
@@ -44,22 +41,6 @@ from . import default
 
 class NoPrecipitationError(Exception):
     pass
-
-
-def _mkdir(dir: str) -> None:
-    """
-    Make directory. Might seem redundant but you might have concurrency issue
-    when dealing with multiprocessing.
-    """
-    if os.path.exists(dir):
-        return None
-
-    try:
-        os.mkdir(dir)
-    except FileExistsError:
-        pass
-
-    return None
 
 
 def check_precip_in_domain(
@@ -429,22 +410,3 @@ def read_radar(grfile: str, refl_name: str, radar_band: str = "C", correct_atten
                 nradar[idx][refl_name].values = corr_refl
 
     return nradar
-
-
-def savedata(matchset: xr.Dataset, output_dir: str, outfilename: str) -> None:
-    """
-    Save dataset as a netCDF4.
-
-    Parameters:
-    ----------
-    matchset: xarray
-        Dataset containing the matched GPM and ground radar data.
-    output_dir: str
-        Path to output directory.
-    outfilename: str
-        Output file name.
-    """
-    outfile = os.path.join(output_dir, outfilename)
-    matchset.to_netcdf(outfile, encoding={k: {"zlib": True} for k in [k for k, _ in matchset.items()]})
-
-    return None
