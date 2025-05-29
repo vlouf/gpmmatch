@@ -22,7 +22,8 @@ import uuid
 import datetime
 import platform
 import warnings
-import itertools
+# import itertools
+import concurrent.futures
 from typing import List, Tuple, Union
 
 import numpy as np
@@ -183,6 +184,101 @@ def volume_matching(
     matchset: xarray.Dataset
         Dataset containing the matched GPM and ground radar data.
     """
+    def process_tilt(jj):
+        local_results = {
+            "x": np.full(nprof, np.nan),
+            "y": np.full(nprof, np.nan),
+            "z": np.full(nprof, np.nan),
+            "r": np.full(nprof, np.nan),
+            "dz": np.full(nprof, np.nan),
+            "ds": np.full(nprof, np.nan),
+            "delta_t": np.full(nprof, np.nan),
+            "sample_gpm": np.full(nprof, np.nan),
+            "volume_match_gpm": np.full(nprof, np.nan),
+            "fmin_gpm": np.full(nprof, np.nan),
+            "fmin_gr": np.full(nprof, np.nan),
+            "refl_gpm_raw": np.full(nprof, np.nan),
+            "refl_gpm_grband": np.full(nprof, np.nan),
+            "pir_gpm": np.full(nprof, np.nan),
+            "std_refl_gpm": np.full(nprof, np.nan),
+            "reject_gpm": np.full(nprof, np.nan),
+            "volume_match_gr": np.full(nprof, np.nan),
+            "refl_gr_weigthed": np.full(nprof, np.nan),
+            "refl_gr_raw": np.full(nprof, np.nan),
+            "pir_gr": np.full(nprof, np.nan),
+            "std_refl_gr": np.full(nprof, np.nan),
+            "reject_gr": np.full(nprof, np.nan),
+            "sample_gr": np.full(nprof, np.nan),
+        }
+        for ii in range(nprof):
+            if elev_gr[jj] - gr_beamwidth / 2 < 0:
+                continue
+
+            epos = (elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) & (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2)
+            local_results["x"][ii] = np.mean(xsat[ii, epos])
+            local_results["y"][ii] = np.mean(ysat[ii, epos])
+            local_results["z"][ii] = np.mean(zsat[ii, epos])
+
+            local_results["sample_gpm"][ii] = np.sum(epos)
+            local_results["volume_match_gpm"][ii] = np.sum(volsat[ii, epos])
+
+            local_results["dz"][ii] = np.sum(epos) * gpmset.dr * np.cos(np.deg2rad(alpha[ii]))
+            local_results["ds"][ii] = (
+                np.deg2rad(gpmset.beamwidth) * np.mean((gpmset.altitude - zsat[ii, epos])) / np.cos(np.deg2rad(alpha[ii]))
+            )
+            local_results["r"][ii] = (
+                (gpmset.earth_gaussian_radius + zsat[ii, jj])
+                * np.sin(s_sat[ii, jj] / gpmset.earth_gaussian_radius)
+                / np.cos(np.deg2rad(elev_gr[jj]))
+            )
+
+            if local_results["r"][ii] + local_results["ds"][ii] / 2 > gr_rmax:
+                continue
+
+            R = R2d_list[jj]
+            DT = delta_t_list[jj]
+            volgr = volgr_list[jj]
+
+            roi_gr_at_vol = np.sqrt((xradar[jj] - local_results["x"][ii]) ** 2 + (yradar[jj] - local_results["y"][ii]) ** 2)
+            rpos = roi_gr_at_vol <= local_results["ds"][ii] / 2
+            if np.sum(rpos) == 0:
+                continue
+
+            w = volgr[rpos] * np.exp(-((roi_gr_at_vol[rpos] / (local_results["ds"][ii] / 2)) ** 2))
+
+            refl_gpm = refl_gpm_raw[ii, epos].flatten()
+            refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
+            refl_gr_raw = ground_radar_reflectivity[jj][rpos].flatten()
+            try:
+                local_results["delta_t"][ii] = np.max(DT[rpos])
+            except ValueError:
+                continue
+
+            if len(refl_gpm) < 5 or len(refl_gr_raw) < 5:
+                continue
+            if np.all(np.isnan(refl_gpm.filled(np.nan))):
+                continue
+            if np.all(np.isnan(refl_gr_raw.filled(np.nan))):
+                continue
+
+            local_results["fmin_gpm"][ii] = np.sum(refl_gpm > 0) / len(refl_gpm)
+            local_results["fmin_gr"][ii] = np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw)
+
+            local_results["refl_gpm_raw"][ii] = np.mean(refl_gpm)
+            local_results["refl_gpm_grband"][ii] = np.mean(refl_gpm_grband)
+            local_results["pir_gpm"][ii] = np.mean(pir_gpm[ii, epos].flatten())
+            local_results["std_refl_gpm"][ii] = np.std(refl_gpm)
+            local_results["reject_gpm"][ii] = np.sum(epos) - np.sum(refl_gpm.mask)
+
+            local_results["volume_match_gr"][ii] = np.sum(volgr[rpos])
+            local_results["refl_gr_weigthed"][ii] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
+            local_results["refl_gr_raw"][ii] = np.mean(refl_gr_raw)
+            local_results["pir_gr"][ii] = np.mean(pir_gr[jj][rpos].flatten())
+            local_results["std_refl_gr"][ii] = np.std(refl_gr_raw)
+            local_results["reject_gr"][ii] = np.sum(rpos)
+            local_results["sample_gr"][ii] = np.sum(~refl_gr_raw.mask)
+        return jj, local_results
+
     if fname_prefix is None:
         fname_prefix = "unknown_radar"
 
@@ -273,82 +369,35 @@ def volume_matching(
     dz = np.zeros((nprof, ntilt))  # depth of sample
     ds = np.zeros((nprof, ntilt))  # width of sample
     delta_t = np.zeros((nprof, ntilt)) + np.nan  # Timedelta of sample
-
-    for ii, jj in itertools.product(range(nprof), range(ntilt)):
-        if elev_gr[jj] - gr_beamwidth / 2 < 0:
-            # Beam partially in the ground.
-            continue
-
-        epos = (elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) & (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2)
-        x[ii, jj] = np.mean(xsat[ii, epos])
-        y[ii, jj] = np.mean(ysat[ii, epos])
-        z[ii, jj] = np.mean(zsat[ii, epos])
-
-        data["sample_gpm"][ii, jj] = np.sum(epos)  # Nb of profiles in layer
-        data["volume_match_gpm"][ii, jj] = np.sum(volsat[ii, epos])  # Total GPM volume in layer
-
-        dz[ii, jj] = np.sum(epos) * gpmset.dr * np.cos(np.deg2rad(alpha[ii]))  # Thickness of the layer
-        ds[ii, jj] = (
-            np.deg2rad(gpmset.beamwidth) * np.mean((gpmset.altitude - zsat[ii, epos])) / np.cos(np.deg2rad(alpha[ii]))
-        )  # Width of layer
-        r[ii, jj] = (
-            (gpmset.earth_gaussian_radius + zsat[ii, jj])
-            * np.sin(s_sat[ii, jj] / gpmset.earth_gaussian_radius)
-            / np.cos(np.deg2rad(elev_gr[jj]))
-        )
-
-        if r[ii, jj] + ds[ii, jj] / 2 > gr_rmax:
-            # More than half the sample is outside of the radar last bin.
-            continue
-
-        # Ground radar side:
-        R = R2d_list[jj]
-        DT = delta_t_list[jj]
-        volgr = volgr_list[jj]
-
-        roi_gr_at_vol = np.sqrt((xradar[jj] - x[ii, jj]) ** 2 + (yradar[jj] - y[ii, jj]) ** 2)
-        rpos = roi_gr_at_vol <= ds[ii, jj] / 2
-        if np.sum(rpos) == 0:
-            continue
-
-        w = volgr[rpos] * np.exp(-((roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2))
-
-        # Extract reflectivity for volume.
-        refl_gpm = refl_gpm_raw[ii, epos].flatten()
-        refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
-        refl_gr_raw = ground_radar_reflectivity[jj][rpos].flatten()
-        try:
-            delta_t[ii, jj] = np.max(DT[rpos])
-        except ValueError:
-            # There's no data in the radar domain.
-            continue
-
-        if len(refl_gpm) < 5 or len(refl_gr_raw) < 5:
-            continue
-        if np.all(np.isnan(refl_gpm.filled(np.nan))):
-            continue
-        if np.all(np.isnan(refl_gr_raw.filled(np.nan))):
-            continue
-
-        # FMIN parameter.
-        data["fmin_gpm"][ii, jj] = np.sum(refl_gpm > 0) / len(refl_gpm)
-        data["fmin_gr"][ii, jj] = np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw)
-
-        # GPM
-        data["refl_gpm_raw"][ii, jj] = np.mean(refl_gpm)
-        data["refl_gpm_grband"][ii, jj] = np.mean(refl_gpm_grband)
-        data["pir_gpm"][ii, jj] = np.mean(pir_gpm[ii, epos].flatten())
-        data["std_refl_gpm"][ii, jj] = np.std(refl_gpm)
-        data["reject_gpm"][ii, jj] = np.sum(epos) - np.sum(refl_gpm.mask)  # Number of rejected bins
-
-        # Ground radar.
-        data["volume_match_gr"][ii, jj] = np.sum(volgr[rpos])
-        data["refl_gr_weigthed"][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
-        data["refl_gr_raw"][ii, jj] = np.mean(refl_gr_raw)
-        data["pir_gr"][ii, jj] = np.mean(pir_gr[jj][rpos].flatten())
-        data["std_refl_gr"][ii, jj] = np.std(refl_gr_raw)
-        data["reject_gr"][ii, jj] = np.sum(rpos)
-        data["sample_gr"][ii, jj] = np.sum(~refl_gr_raw.mask)
+    
+    results = {}
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_tilt, jj) for jj in range(ntilt)]
+        for future in concurrent.futures.as_completed(futures):
+            jj, local_results = future.result()
+            x[:, jj] = local_results["x"]
+            y[:, jj] = local_results["y"]
+            z[:, jj] = local_results["z"]
+            r[:, jj] = local_results["r"]
+            dz[:, jj] = local_results["dz"]
+            ds[:, jj] = local_results["ds"]
+            delta_t[:, jj] = local_results["delta_t"]
+            data["sample_gpm"][:, jj] = local_results["sample_gpm"]
+            data["volume_match_gpm"][:, jj] = local_results["volume_match_gpm"]
+            data["fmin_gpm"][:, jj] = local_results["fmin_gpm"]
+            data["fmin_gr"][:, jj] = local_results["fmin_gr"]
+            data["refl_gpm_raw"][:, jj] = local_results["refl_gpm_raw"]
+            data["refl_gpm_grband"][:, jj] = local_results["refl_gpm_grband"]
+            data["pir_gpm"][:, jj] = local_results["pir_gpm"]
+            data["std_refl_gpm"][:, jj] = local_results["std_refl_gpm"]
+            data["reject_gpm"][:, jj] = local_results["reject_gpm"]
+            data["volume_match_gr"][:, jj] = local_results["volume_match_gr"]
+            data["refl_gr_weigthed"][:, jj] = local_results["refl_gr_weigthed"]
+            data["refl_gr_raw"][:, jj] = local_results["refl_gr_raw"]
+            data["pir_gr"][:, jj] = local_results["pir_gr"]
+            data["std_refl_gr"][:, jj] = local_results["std_refl_gr"]
+            data["reject_gr"][:, jj] = local_results["reject_gr"]
+            data["sample_gr"][:, jj] = local_results["sample_gr"]
 
     data["x"] = x
     data["y"] = y
