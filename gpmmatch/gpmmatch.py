@@ -98,18 +98,17 @@ def get_gr_reflectivity(nradar: List[xr.Dataset], refl_name: str, gr_offset: flo
     pir_gr: List[np.ndarray]
         Array of path-integrated reflectivity values for ground radar for each radar tilt.
     """
-    ground_radar_reflectivity = [] * len(nradar)
-    pir_gr = [] * len(nradar)
-
-    get_dr = lambda x: x[1] - x[0]
-    for idx, radar in enumerate(nradar):
+    ground_radar_reflectivity = []
+    pir_gr = []    
+    for radar in nradar:
         refl = radar[refl_name].values - gr_offset
         refl[refl < gr_refl_threshold] = np.nan
         refl = np.ma.masked_invalid(refl)
-        ground_radar_reflectivity[idx] = refl
+        ground_radar_reflectivity.append(refl)
 
-        pir = 10 * np.log10(np.cumsum((10 ** (refl / 10)).filled(0), axis=1) * get_dr(radar.range.values))
-        pir_gr[idx] = pir
+        dr = (radar.range[1] - radar.range[0]).values  # Range resolution in meters
+        pir = 10 * np.log10(np.cumsum((10 ** (refl / 10)).filled(0), axis=1) * dr)
+        pir_gr.append(pir)
 
     return ground_radar_reflectivity, pir_gr
 
