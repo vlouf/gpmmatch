@@ -40,6 +40,29 @@ class NoRainError(Exception):
     pass
 
 
+def generate_filename(radar: xr.Dataset, gpmset: xr.Dataset, fname_prefix: str) -> str:
+    """
+    Generates a filename for the output dataset based on the input GPM and ground radar files.
+
+    Parameters:
+    ----------
+    gpmfile: str
+        GPM data file.
+    grfile: str
+        Ground radar input file.
+    fname_prefix: str
+        Name of the ground radar to use as label for the output file.
+
+    Returns:
+    -------
+    str
+        Generated filename for the output dataset.
+    """
+    date = pd.Timestamp(radar.time[0].values).strftime("%Y%m%d.%H%M")
+    outfilename = f"vmatch.gpm.orbit.{gpmset.attrs['orbit']:07}.{fname_prefix}.{date}.nc"
+    return outfilename
+
+
 def get_radar_coordinates(nradar: List[xr.Dataset], elevation_offset: Union[float, None] = None) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
     """
     Extracts the ground radar coordinates and elevation angles.
@@ -99,7 +122,7 @@ def get_gr_reflectivity(nradar: List[xr.Dataset], refl_name: str, gr_offset: flo
         Array of path-integrated reflectivity values for ground radar for each radar tilt.
     """
     ground_radar_reflectivity = []
-    pir_gr = []    
+    pir_gr = []
     for radar in nradar:
         refl = radar[refl_name].values - gr_offset
         refl[refl < gr_refl_threshold] = np.nan
@@ -213,9 +236,8 @@ def volume_matching(
     volgr_list = []
     for jj in range(ntilt):
         # Get the ground radar range and azimuth.
-        deltat = nradar[jj] - gpmset.overpass_time.values
-        R, _ = np.meshgrid(nradar[jj].range.values, nradar[jj].azimuth.values)
-        _, DT = np.meshgrid(nradar[jj].range.values, deltat)
+        deltat = nradar[jj].time - gpmset.overpass_time.values
+        R, DT = np.meshgrid(nradar[jj].range.values, deltat)
         volgr = 1e-9 * dr * (R * np.deg2rad(gr_beamwidth)) ** 2  # km3
         R2d_list.append(R)
         delta_t_list.append(DT)
@@ -398,7 +420,7 @@ def volume_matching(
     except Exception:
         history = f"Created by {matchset.attrs['creator_name']} at {matchset.attrs['date_created']} using Py-ART."
     matchset.attrs["history"] = history
-    matchset.attrs["history"] = history
+    matchset.attrs["filename"] = generate_filename(nradar[0], gpmset, fname_prefix)
 
     return matchset
 
@@ -454,7 +476,7 @@ def vmatch_multi_pass(
         Path to output directory.
     """
 
-    def _save(dset: xr.Dataset, output_directory: str, debug: bool = False) -> None:
+    def _save(dset: xr.Dataset, output_directory: str) -> None:
         """
         Generate multipass metadata and file name.
         """
@@ -462,8 +484,11 @@ def vmatch_multi_pass(
         matchset.attrs["offset_history"] = ",".join([f"{float(i):0.3}" for i in offset_keeping_track])
         outfilename = dset.attrs["filename"].replace(".nc", f".pass{counter}.nc")
         savedata(dset, output_directory, outfilename)
-        if debug:
-            print(f"{os.path.basename(outfilename)} written for radar {fname_prefix}")
+        if os.path.exists(os.path.join(outfilename)):
+            print(f"{os.path.basename(outfilename)} written to {output_directory}.")
+        else:
+            raise FileNotFoundError(f"File {outfilename} not found in {output_directory}.")
+
         return None
 
     counter = 0
