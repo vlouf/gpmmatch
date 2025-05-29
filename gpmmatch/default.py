@@ -5,23 +5,27 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 24/02/2020
-@date: 28/07/2020
+@date: 29/05/2025
 
 .. autosummary::
     :toctree: generated/
-
-    load_national_archive_info
+    
     gpmset_metadata
     get_metadata
 """
-import os
-import pandas as pd
+from typing import Dict, Any
 
 
-def gpmset_metadata() -> dict:
+def gpmset_metadata() -> Dict[str, Any]:
     """
     Return a bunch of metadata (description, units, long_name, etc.) for the
-    gpmset.
+    GPM set metadata.
+    This metadata is used to describe the GPM data columns that are
+    volume-matched to the ground radar data.
+    The metadata includes information about the GPM overpass time, parallax
+    corrected coordinates, precipitation inside the ground radar scope,
+    range and elevation from the ground radar, and reflectivity in the
+    ground radar band.    
 
     Returns:
     ========
@@ -60,7 +64,7 @@ def gpmset_metadata() -> dict:
     return metadata
 
 
-def get_metadata() -> dict:
+def get_metadata() -> Dict[str, Dict[str, str]]:
     """
     Return a bunch of metadata (description, units, long_name, etc.) for the
     output dataset.

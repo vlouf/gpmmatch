@@ -28,7 +28,7 @@ import copy
 import datetime
 import warnings
 
-from typing import Tuple, Any, List
+from typing import Tuple, List, Union
 from collections import OrderedDict
 
 import h5py
@@ -113,11 +113,11 @@ def check_precip_in_domain(
 
 def data_load_and_checks(
     gpmfile: str,
-    grfile: str,    
-    refl_name: str = None,
+    grfile: str,
+    refl_name: Union[str, None] = None,
     correct_attenuation: bool = True,
     radar_band: str = "C",
-) -> Tuple[Any, Any]:
+) -> Tuple[xr.Dataset, List[xr.Dataset]]:
     """
     Load GPM and Ground radar files and perform some initial checks:
     domains intersect, precipitation, time difference.
@@ -147,7 +147,7 @@ def data_load_and_checks(
         Pyart radar dataset.
     """
     if refl_name is None:
-        raise ValueError("Reflectivity field name not given.")        
+        raise ValueError("Reflectivity field name not given.")
 
     gpmset = read_GPM(gpmfile)
     grlon, grlat, gralt, rmin, rmax = get_ground_radar_attributes(grfile)
@@ -215,7 +215,7 @@ def data_load_and_checks(
     gpmset.attrs["earth_gaussian_radius"] = gr_gaussian_radius
 
     # Time to read the ground radar data.
-    radar = read_radar(grfile, refl_name, correct_attenuation, radar_band)    
+    radar = read_radar(grfile, refl_name, radar_band=radar_band, correct_attenuation=correct_attenuation)
 
     return gpmset, radar
 
@@ -400,7 +400,7 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
     return dset
 
 
-def read_radar(grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False) -> List:
+def read_radar(grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False) -> List[xr.Dataset]:
     """
     Read ground radar data. If 2 files provided, then it will compute the
     displacement between these two files and then correct for advection the
@@ -417,7 +417,7 @@ def read_radar(grfile: str, refl_name: str, radar_band: str = "C", correct_atten
     ========
     radar: List[xr.Dataset]
         Radar dataset
-    """    
+    """
     nradar = pyodim.read_odim(grfile, lazy_load=False)
     if nradar[-1].elevation.max() > 80:
         nradar.pop(-1)
@@ -425,7 +425,7 @@ def read_radar(grfile: str, refl_name: str, radar_band: str = "C", correct_atten
     for idx in range(len(nradar)):
         if correct_attenuation:
             if radar_band in ["X", "C"]:  # Correct attenuation of X or C bands.
-                corr_refl = correct.correct_attenuation(nradar[idx][refl_name].values, radar_band)                
+                corr_refl = correct.correct_attenuation(nradar[idx][refl_name].values, radar_band)
                 nradar[idx][refl_name].values = corr_refl
 
     return nradar

@@ -17,10 +17,12 @@ Various utilities for correction and conversion of satellite data.
     get_offset
     grid_displacement
 """
+from typing import Tuple
 import numpy as np
+import xarray as xr
 
 
-def compute_gaussian_curvature(lat0):
+def compute_gaussian_curvature(lat0: float) -> float:
     """
     Determine the Earth's Gaussian radius of curvature at the radar
     https://en.wikipedia.org/wiki/Earth_radius#Radii_of_curvature
@@ -49,7 +51,7 @@ def compute_gaussian_curvature(lat0):
     return ae
 
 
-def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
+def convert_gpmrefl_grband_dfr(refl_gpm: np.ndarray, radar_band: str) -> np.ndarray:
     """
     Convert GPM reflectivity to ground radar band using the DFR relationship
     found in Louf et al. (2019) paper.
@@ -82,7 +84,7 @@ def convert_gpmrefl_grband_dfr(refl_gpm, radar_band=None):
     return refl_gpm + dfr(refl_gpm)
 
 
-def correct_attenuation(reflectivity, radar_band):
+def correct_attenuation(reflectivity: np.ndarray, radar_band: str) -> np.ndarray:
     """
     Correct from C- or X-Band attenuation using a Z-A relationship derived from
     T-matrix calculations using the Meteor disdrometer.
@@ -110,7 +112,7 @@ def correct_attenuation(reflectivity, radar_band):
     return corr_refl
 
 
-def correct_parallax(sr_x, sr_y, gpmset):
+def correct_parallax(sr_x: np.ndarray, sr_y: np.ndarray, gpmset: xr.Dataset) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Adjust the geo-locations of the SR pixels. The `sr_xy` coordinates of the
     SR beam footprints need to be in the azimuthal equidistant projection of
@@ -162,7 +164,7 @@ def correct_parallax(sr_x, sr_y, gpmset):
     return sr_xp, sr_yp, z_sr
 
 
-def get_offset(matchset, dr, nbins=200) -> float:
+def get_offset(matchset: xr.Dataset, dr: float, nbins: int=200) -> float:
     """
     Compute the Offset between GR and GPM. It will try to compute the mode of
     the distribution and if it fails, then it will use the mean.
@@ -171,7 +173,7 @@ def get_offset(matchset, dr, nbins=200) -> float:
     ==========
     matchset: xr.Dataset
         Dataset of volume matching.
-    dr: int
+    dr: float
         Ground radar gate spacing (m).
     nbins: int
         Defines the number of equal-width bins in the distribution.
@@ -197,9 +199,9 @@ def get_offset(matchset, dr, nbins=200) -> float:
     refl_gpm[pos] = np.nan
     refl_gr[pos] = np.nan
 
-    pdf_gpm, _ = np.histogram(refl_gpm, range=[0, 50], bins=nbins, density=True)
+    pdf_gpm, _ = np.histogram(refl_gpm, range=(0, 50), bins=nbins, density=True)
     for idx, a in enumerate(offset):
-        pdf_gr, _ = np.histogram(refl_gr - a, range=[0, 50], bins=nbins, density=True)
+        pdf_gr, _ = np.histogram(refl_gr - a, range=(0, 50), bins=nbins, density=True)
         diff = np.min([pdf_gr, pdf_gpm], axis=0)
         area[idx] = np.sum(diff)
 
@@ -209,7 +211,7 @@ def get_offset(matchset, dr, nbins=200) -> float:
     return gr_offset
 
 
-def grid_displacement(field1, field2):
+def grid_displacement(field1: np.ndarray, field2: np.ndarray) -> Tuple[Tuple[int, int], Tuple[int, int]]:
     """
     Calculate the grid displacement using Phase correlation.
     http://en.wikipedia.org/wiki/Phase_correlation
