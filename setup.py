@@ -15,16 +15,7 @@ EMAIL = "valentin.louf@bom.gov.au"
 AUTHOR = "Valentin Louf"
 
 # What packages are required for this module to be executed?
-REQUIRED = ['arm_pyart',
-            'cftime',
-            'dask',
-            'h5py',
-            'netCDF4',
-            'numpy',
-            'pandas',
-            'pyproj',
-            'scipy',
-            'xarray']
+REQUIRED = ["pyodim", "cftime", "dask", "h5py", "netCDF4", "numpy", "pandas", "pyproj", "scipy", "xarray"]
 
 here = os.path.abspath(os.path.dirname(__file__))
 with io.open(os.path.join(here, "README.md"), encoding="utf-8") as f:
@@ -67,26 +58,41 @@ class PublishCommand(Command):
 # Where the magic happens:
 setup(
     name=NAME,
-    version="1.1.0",
+    version="1.3.0",
     description=DESCRIPTION,
     long_description=long_description,
     author=AUTHOR,
     author_email=EMAIL,
     url=URL,
+    project_urls={
+        "Documentation": "https://github.com/vlouf/gpmmatch#readme",
+        "Source": "https://github.com/vlouf/gpmmatch",
+        "Tracker": "https://github.com/vlouf/gpmmatch/issues",
+    },
     packages=find_packages(exclude=("tests", "example", "notebooks")),
     package_data={"gpmmatch": ["data/radar_site_list.csv"]},
     install_requires=REQUIRED,
     include_package_data=True,
-    license="ISC",
+    license="Apache-2.0",
+    python_requires=">=3.9",
     classifiers=[
         # Trove classifiers
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
+        "Environment :: Console",
+        "Environment :: Jupyter",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Education",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Topic :: Scientific/Engineering :: Atmospheric Science",
     ],
     # $ setup.py publish support.
-    cmdclass={"publish": PublishCommand,},
+    cmdclass={
+        "publish": PublishCommand,
+    },
 )
