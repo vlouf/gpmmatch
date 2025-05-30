@@ -1,6 +1,6 @@
 # 🛰️ gpmmatch 🛰️
 
-`gpmmatch` is a Python library for ground-radar vs satellite volume-matching. It is built to work with GPM, but also supports the latest version of TRMM products.
+gpmmatch is a Python library for matching satellite and ground-based radar volumes. It is primarily designed for use with GPM (Global Precipitation Measurement) data, but also supports the latest TRMM (Tropical Rainfall Measuring Mission) products
 
 ## Libraries needed:
 
@@ -20,18 +20,33 @@ pip install numpy pandas netCDF4 xarray dask arm_pyart
 In addition, you will need to install the `gpmmatch` and `pyodim` libraries from Github:
 ```
 pip install git+https://github.com/vlouf/gpmmatch.git
-pip install git+https://github.com/vlouf/pyodim.git`
+pip install pyodim`
 ```
 
 ## Example Jupyter Notebook
 
 An example Jupyter notebook is available in the `example` directory. This notebook demonstrates how to use the `gpmmatch` library to a volume matching of GPM data against radar data. The notebook provides step-by-step instructions for downloading a sample of radar data from the Australian weather radar network archive. Finally, the notebook uses Matplotlib to create a plot of the results of the GPMmatch technique.
 
-## References
+## Citation
 
-If you use `gpmmatch` for a scientific publication, please cite the following paper:
+If you use `gpmmatch` in your research, please cite the following paper:
 
-Louf, V., Protat, A., Warren, R. A., Collis, S. M., Wolff, D. B., Raunyiar, S., Jakob, C., & Petersen, W. A. (2019). An Integrated Approach to Weather Radar Calibration and Monitoring Using Ground Clutter and Satellite Comparisons. Journal of Atmospheric and Oceanic Technology, 36(1), 17–39. [10.1175/JTECH-D-18-0007.1](https://doi.org/10.1175/JTECH-D-18-0007.1)
+**Louf, Valentin, and Alain Protat**. *Real-Time Monitoring of Weather Radar Network Calibration and Antenna Pointing.* Journal of Atmospheric and Oceanic Technology, April 24, 2023. https://doi.org/10.1175/JTECH-D-22-0118.1.
+
+BibTeX:
+```bibtex
+@article {Louf2023,
+    author = "Valentin Louf and Alain Protat",
+    title = "Real-Time Monitoring of Weather Radar Network Calibration and Antenna Pointing",
+    journal = "Journal of Atmospheric and Oceanic Technology",
+    year = "2023",
+    publisher = "American Meteorological Society",    
+    volume = "40",
+    number = "7",
+    doi = "10.1175/JTECH-D-22-0118.1",
+    pages=  "823 - 844",    
+}
+```
 
 ## License
 
