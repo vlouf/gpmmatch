@@ -1,25 +1,39 @@
 # 🛰️ gpmmatch 🛰️
 
-gpmmatch is a Python library for matching satellite and ground-based radar volumes. It is primarily designed for use with GPM (Global Precipitation Measurement) data, but also supports the latest TRMM (Tropical Rainfall Measuring Mission) products
+gpmmatch is a Python library for matching satellite and ground-based radar volumes. It is primarily designed for use with GPM (Global Precipitation Measurement) data, but also supports the latest TRMM (Tropical Rainfall Measuring Mission) products.
 
-## Libraries needed:
+## ⚠️ Branch and Radar Format Compatibility
 
-- numpy
-- pandas 
-- netCDF4
-- xarray
-- dask
-- pyodim
+> **Important Notice on Branch Usage and Radar Format Support**
 
-These libraries can be installed using pip:
-```
+The `master` branch of this repository uses **`pyodim`** for radar data I/O and is **only compatible with ODIM HDF5 radar format**. This branch is used in **operational environments**, and **ODIM is the only officially supported radar format** for production use.
+
+If you are working with other radar formats (e.g., NEXRAD, UF, SIGMET, etc.), please use the `pyart` branch, which integrates with the **Py-ART** library and supports a wider range of radar data formats.
+
+| Branch   | Radar I/O Library | Supported Formats         | Intended Use            |
+|----------|-------------------|---------------------------|--------------------------|
+| `master` | `pyodim`          | ODIM only                 | Operational (official)   |
+| `pyart`  | `Py-ART`          | Multiple radar formats    | Research & development   |
+
+Please ensure you are using the appropriate branch and radar I/O backend for your application.
+
+---
+
+## 🛠️ Libraries Needed
+
+The following Python libraries are required to use `gpmmatch` (master branch with `pyodim` support, `pyart` branch with `pyart` support):
+
+- `numpy`
+- `pandas`
+- `netCDF4`
+- `xarray`
+- `dask`
+- `pyodim`
+
+You can install the core dependencies using pip:
+
+```bash
 pip install numpy pandas netCDF4 xarray dask
-```
-
-In addition, you will need to install the cluttercal and pyodim libraries from Github:
-```
-pip install git+https://github.com/vlouf/gpmmatch.git
-pip install pyodim`
 ```
 
 ## Example Jupyter Notebook

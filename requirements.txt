@@ -1,0 +1,7 @@
+numpy
+pandas
+h5py
+netCDF4
+xarray
+pyodim
+pyproj

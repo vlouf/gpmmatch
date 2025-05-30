@@ -7,6 +7,10 @@ from shutil import rmtree
 
 from setuptools import find_packages, setup, Command
 
+def parse_requirements(filename):
+    with open(filename, encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip() and not line.startswith("#")]
+
 # Package meta-data.
 NAME = "gpmmatch"
 DESCRIPTION = "Volume matching of ground radar and GPM satellite data."
@@ -14,14 +18,11 @@ URL = "https://github.com/vlouf/gpmmatch"
 EMAIL = "valentin.louf@bom.gov.au"
 AUTHOR = "Valentin Louf"
 
-# What packages are required for this module to be executed?
-REQUIRED = ["pyodim", "cftime", "dask", "h5py", "netCDF4", "numpy", "pandas", "pyproj", "scipy", "xarray"]
-
 here = os.path.abspath(os.path.dirname(__file__))
 with io.open(os.path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
 
-
+REQUIRED = parse_requirements("requirements.txt")
 class PublishCommand(Command):
     """Support setup.py publish."""
 
