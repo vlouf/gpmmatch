@@ -9,10 +9,11 @@ Volume matching of ground radar and GPM satellite. Default naming and attribute.
 
 .. autosummary::
     :toctree: generated/
-    
+
     gpmset_metadata
     get_metadata
 """
+
 from typing import Dict, Any
 
 
@@ -25,16 +26,14 @@ def gpmset_metadata() -> Dict[str, Any]:
     The metadata includes information about the GPM overpass time, parallax
     corrected coordinates, precipitation inside the ground radar scope,
     range and elevation from the ground radar, and reflectivity in the
-    ground radar band.    
+    ground radar band.
 
     Returns:
     ========
     metadata: dict
     """
     metadata = {
-        "overpass_time": {
-            "description": "GPM overpass time at the closest from ground radar site"
-        },
+        "overpass_time": {"description": "GPM overpass time at the closest from ground radar site"},
         "x": {
             "units": "m",
             "description": "x-axis parallax corrected coordinates in relation to ground radar.",

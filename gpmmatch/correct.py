@@ -17,6 +17,7 @@ Various utilities for correction and conversion of satellite data.
     get_offset
     grid_displacement
 """
+
 from typing import Tuple
 import numpy as np
 import xarray as xr
@@ -43,8 +44,8 @@ def compute_gaussian_curvature(lat0: float) -> float:
     b = a * np.sqrt(1 - e2)
 
     tmp = (a * np.cos(np.pi / 180 * lat0)) ** 2 + (b * np.sin(np.pi / 180 * lat0)) ** 2  # Denominator
-    an = (a ** 2) / np.sqrt(tmp)  # Radius of curvature in the prime vertical (east–west direction)
-    am = (a * b) ** 2 / tmp ** 1.5  # Radius of curvature in the north–south meridian
+    an = (a**2) / np.sqrt(tmp)  # Radius of curvature in the prime vertical (east–west direction)
+    am = (a * b) ** 2 / tmp**1.5  # Radius of curvature in the north–south meridian
     ag = np.sqrt(an * am)  # Earth's Gaussian radius of curvature
     ae = (4 / 3.0) * ag
 
@@ -112,7 +113,9 @@ def correct_attenuation(reflectivity: np.ndarray, radar_band: str) -> np.ndarray
     return corr_refl
 
 
-def correct_parallax(sr_x: np.ndarray, sr_y: np.ndarray, gpmset: xr.Dataset) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def correct_parallax(
+    sr_x: np.ndarray, sr_y: np.ndarray, gpmset: xr.Dataset
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Adjust the geo-locations of the SR pixels. The `sr_xy` coordinates of the
     SR beam footprints need to be in the azimuthal equidistant projection of
@@ -164,7 +167,7 @@ def correct_parallax(sr_x: np.ndarray, sr_y: np.ndarray, gpmset: xr.Dataset) -> 
     return sr_xp, sr_yp, z_sr
 
 
-def get_offset(matchset: xr.Dataset, dr: float, nbins: int=200) -> float:
+def get_offset(matchset: xr.Dataset, dr: float, nbins: int = 200) -> float:
     """
     Compute the Offset between GR and GPM. It will try to compute the mode of
     the distribution and if it fails, then it will use the mean.
@@ -192,9 +195,9 @@ def get_offset(matchset: xr.Dataset, dr: float, nbins: int=200) -> float:
 
     pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin != 1)
     if (~pos).sum() == 0:  # Relaxing fmin parameter.
-        pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin < .9)
+        pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin < 0.9)
     if (~pos).sum() == 0:
-        pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin < .7)
+        pos = (refl_gpm > 36) | (refl_gr > 36) | (fmin < 0.7)
 
     refl_gpm[pos] = np.nan
     refl_gr[pos] = np.nan

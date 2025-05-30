@@ -17,6 +17,7 @@ latest version of TRMM data.
     volume_matching
     vmatch_multi_pass
 """
+
 import os
 import uuid
 import datetime
@@ -61,7 +62,9 @@ def generate_filename(radar: xr.Dataset, gpmset: xr.Dataset, fname_prefix: str) 
     return outfilename
 
 
-def get_radar_coordinates(nradar: List[xr.Dataset], elevation_offset: Union[float, None] = None) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+def get_radar_coordinates(
+    nradar: List[xr.Dataset], elevation_offset: Union[float, None] = None
+) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
     """
     Extracts the ground radar coordinates and elevation angles.
 
@@ -99,7 +102,9 @@ def get_radar_coordinates(nradar: List[xr.Dataset], elevation_offset: Union[floa
     return range_gr, elev_gr, xradar, yradar, time_radar
 
 
-def get_gr_reflectivity(nradar: List[xr.Dataset], refl_name: str, gr_offset: float, gr_refl_threshold: float) -> Tuple[List[np.ma.MaskedArray], List[np.ndarray]]:
+def get_gr_reflectivity(
+    nradar: List[xr.Dataset], refl_name: str, gr_offset: float, gr_refl_threshold: float
+) -> Tuple[List[np.ma.MaskedArray], List[np.ndarray]]:
     """
     Extracts the ground radar reflectivity and computes the path-integrated reflectivity.
     Parameters:
@@ -213,7 +218,7 @@ def volume_matching(
     xsat = gpmset.x.values[position_precip_domain]
     ysat = gpmset.y.values[position_precip_domain]
     zsat = gpmset.z.values[position_precip_domain]
-    s_sat = np.sqrt(xsat ** 2 + ysat ** 2)
+    s_sat = np.sqrt(xsat**2 + ysat**2)
 
     rsat = np.zeros(gpmset.zFactorCorrected.shape)
     for i in range(rsat.shape[0]):
@@ -381,10 +386,10 @@ def volume_matching(
             except KeyError:
                 continue
 
-    ar = gpmset.x ** 2 + gpmset.y ** 2
+    ar = gpmset.x**2 + gpmset.y**2
     iscan, _, _ = np.where(ar == ar.min())
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
-    gpm_mindistance = np.sqrt(gpmset.x ** 2 + gpmset.y ** 2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
+    gpm_mindistance = np.sqrt(gpmset.x**2 + gpmset.y**2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
     offset = get_offset(matchset, dr)
     if np.abs(offset) > 15:
         raise ValueError(f"Offset of {offset} dB for {grfile} too big to mean anything.")
@@ -409,10 +414,11 @@ def volume_matching(
     matchset.attrs["uuid"] = str(uuid.uuid4())
     matchset.attrs["institution"] = "Bureau of Meteorology"
     matchset.attrs["references"] = "doi:10.1175/JTECH-D-18-0007.1 ; doi:10.1175/JTECH-D-17-0128.1"
-    matchset.attrs["disclaimer"] = "If you are using this data/technique for a scientific publication, please cite the papers given in references."
+    matchset.attrs["disclaimer"] = (
+        "If you are using this data/technique for a scientific publication, please cite the papers given in references."
+    )
     matchset.attrs["naming_authority"] = "au.org.nci"
     matchset.attrs["summary"] = "GPM volume matching technique."
-    matchset.attrs["field_names"] = ", ".join(sorted([k for k, v in matchset.items()]))
     try:
         history = f"Created by {matchset.attrs['creator_name']} on {platform.node()} at {matchset.attrs['date_created']} using Py-ART."
     except Exception:

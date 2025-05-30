@@ -12,7 +12,7 @@ volume_matching.
     :toctree: generated/
 
     NoPrecipitationError
-    _read_radar    
+    _read_radar
     check_precip_in_domain
     data_load_and_checks
     get_ground_radar_attributes
@@ -20,6 +20,7 @@ volume_matching.
     read_GPM
     read_radars
 """
+
 import re
 import copy
 import datetime
@@ -74,7 +75,7 @@ def check_precip_in_domain(
     gpmlon = gpmset.Longitude.values
 
     xgpm, ygpm = georef(gpmlon, gpmlat)
-    rproj_gpm = (xgpm ** 2 + ygpm ** 2) ** 0.5
+    rproj_gpm = (xgpm**2 + ygpm**2) ** 0.5
 
     gr_domain = (rproj_gpm <= rmax) & (rproj_gpm >= rmin)
     if gr_domain.sum() < 10:
@@ -139,7 +140,7 @@ def data_load_and_checks(
     gpmlon = gpmset.Longitude.values
 
     xgpm, ygpm = georef(gpmlon, gpmlat)
-    rproj_gpm = (xgpm ** 2 + ygpm ** 2) ** 0.5
+    rproj_gpm = (xgpm**2 + ygpm**2) ** 0.5
 
     gr_domain = (rproj_gpm <= rmax) & (rproj_gpm >= rmin)
     if gr_domain.sum() < 10:
@@ -158,7 +159,7 @@ def data_load_and_checks(
 
     # Compute the elevation of the satellite bins with respect to the ground radar.
     gr_gaussian_radius = correct.compute_gaussian_curvature(grlat)
-    gamma = np.sqrt(sr_xp ** 2 + sr_yp ** 2) / gr_gaussian_radius
+    gamma = np.sqrt(sr_xp**2 + sr_yp**2) / gr_gaussian_radius
     elev_sr_grref = np.rad2deg(
         np.arctan2(np.cos(gamma) - (gr_gaussian_radius + gralt) / (gr_gaussian_radius + z_sr), np.sin(gamma))
     )
@@ -314,7 +315,10 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
                         gpm_refl[gpm_refl < 0] = np.nan
                         data[sk] = (dims, np.ma.masked_invalid(np.ma.masked_less_equal(gpm_refl, refl_min_thld)))
                     elif sk == "flagPrecip":
-                        data[sk] = (dims, np.ma.masked_invalid(hid[f"/{master_key}/{k}/{sk}"][:]).filled(0).astype(bool))
+                        data[sk] = (
+                            dims,
+                            np.ma.masked_invalid(hid[f"/{master_key}/{k}/{sk}"][:]).filled(0).astype(bool),
+                        )
                     else:
                         data[sk] = (dims, np.ma.masked_equal(hid[f"/{master_key}/{k}/{sk}"][:], fv))
 
@@ -381,7 +385,9 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
     return dset
 
 
-def read_radar(grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False) -> List[xr.Dataset]:
+def read_radar(
+    grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False
+) -> List[xr.Dataset]:
     """
     Read ground radar data. If 2 files provided, then it will compute the
     displacement between these two files and then correct for advection the
