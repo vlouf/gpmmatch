@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "gpmmatch"
+authors:
+  - family-names: Louf
+    given-names: Valentin
+    orcid: https://orcid.org/0000-0001-8133-3031
+  - family-names: Protat
+    given-names: Alain
+    orcid: https://orcid.org/0000-0002-8933-874X
+date-released: 2023-04-24
+version: 0.1.0
+doi: 10.1175/JTECH-D-22-0118.1
+preferred-citation:
+  type: article
+  title: "Real-Time Monitoring of Weather Radar Network Calibration and Antenna Pointing"
+  authors:
+    - family-names: Louf
+      given-names: Valentin
+    - family-names: Protat
+      given-names: Alain
+  journal: "Journal of Atmospheric and Oceanic Technology"
+  year: 2023
+  doi: 10.1175/JTECH-D-22-0118.1
