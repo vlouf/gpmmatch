@@ -246,8 +246,10 @@ def volume_matching(
     zsat = gpmset.z.values[position_precip_domain]
     s_sat = np.sqrt(xsat**2 + ysat**2)
 
-    # Vectorized rsat initialization
-    rsat = np.tile(gpmset.distance_from_sr.values, (gpmset.zFactorCorrected.shape[0], 1))
+    # Initialize rsat - same as original code to maintain compatibility
+    rsat = np.zeros(gpmset.zFactorCorrected.shape)
+    for i in range(rsat.shape[0]):
+        rsat[i, :] = gpmset.distance_from_sr.values
 
     volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth)) ** 2  # km3
 
@@ -352,7 +354,7 @@ def volume_matching(
         # Simplified weight calculation
         half_width = ds[ii, jj] / 2
         normalized_distance = roi_gr_at_vol[rpos] / half_width
-        w = volgr[rpos] * np.exp(-(normalized_distance**2))
+        w = volgr[rpos] * np.exp(-(normalized_distance ** 2))
 
         # Extract reflectivity for volume.
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
