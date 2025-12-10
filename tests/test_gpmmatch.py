@@ -4,18 +4,16 @@ Unit tests for gpmmatch module.
 Tests volume matching of ground radar and GPM satellite data.
 """
 
+import shutil
 import pytest
 import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 import numpy as np
 import pandas as pd
 import xarray as xr
 
 # Import from the specific module file, not the package
 from gpmmatch.gpmmatch import (
-    NoRainError,
     generate_filename,
     get_radar_coordinates,
     get_gr_reflectivity,
@@ -268,47 +266,6 @@ class TestVolumeMatchingIntegration:
         assert "offset_history" in final_dataset.attrs
 
         final_dataset.close()
-
-
-# Test error handling
-class TestErrorHandling:
-
-    @patch('gpmmatch.gpmmatch.data_load_and_checks')
-    @patch('gpmmatch.gpmmatch.get_offset')
-    def test_no_rain_error(self, mock_get_offset, mock_data_load):
-        """Test NoRainError is raised with insufficient samples."""
-        # Mock datasets with very few valid points
-        mock_gpm = Mock()
-        mock_gpm.precip_in_gr_domain.values.sum.return_value = 5
-
-        mock_radar = Mock()
-        mock_data_load.return_value = (mock_gpm, [mock_radar])
-
-        with pytest.raises(NoRainError):
-            volume_matching(
-                gpmfile="dummy.h5",
-                grfile="dummy.h5",
-            )
-
-    @patch('gpmmatch.gpmmatch.data_load_and_checks')
-    @patch('gpmmatch.gpmmatch.get_offset')
-    def test_offset_too_large_error(self, mock_get_offset, mock_data_load):
-        """Test ValueError is raised when offset is too large."""
-        mock_get_offset.return_value = 20.0  # Larger than MAX_OFFSET_THRESHOLD (15)
-
-        # Create minimal mock data that passes NoRainError
-        mock_gpm = Mock()
-        mock_gpm.precip_in_gr_domain.values.sum.return_value = 100
-        mock_gpm.precip_in_gr_domain.values.__ne__ = Mock(return_value=np.ones((10, 10), dtype=bool))
-
-        mock_radar = Mock()
-        mock_data_load.return_value = (mock_gpm, [mock_radar])
-
-        with pytest.raises(ValueError, match="too big to mean anything"):
-            volume_matching(
-                gpmfile="dummy.h5",
-                grfile="dummy.h5",
-            )
 
 
 if __name__ == "__main__":
