@@ -18,12 +18,11 @@ latest version of TRMM data.
     vmatch_multi_pass
 """
 
-import os
 import uuid
 import datetime
-import platform
 import warnings
 import itertools
+from pathlib import Path
 from typing import List, Tuple, Union
 
 import numpy as np
@@ -33,6 +32,11 @@ import xarray as xr
 from .correct import get_offset
 from .io import data_load_and_checks
 from .default import get_metadata
+
+# Constants
+MIN_SAMPLE_POINTS = 20
+MIN_REFL_SAMPLES = 5
+MAX_OFFSET_THRESHOLD = 15
 
 
 class NoRainError(Exception):
@@ -45,10 +49,10 @@ def generate_filename(radar: xr.Dataset, gpmset: xr.Dataset, fname_prefix: str) 
 
     Parameters:
     ----------
-    gpmfile: str
-        GPM data file.
-    grfile: str
-        Ground radar input file.
+    radar: xr.Dataset
+        Ground radar dataset.
+    gpmset: xr.Dataset
+        GPM dataset.
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
 
@@ -107,6 +111,7 @@ def get_gr_reflectivity(
 ) -> Tuple[List[np.ma.MaskedArray], List[np.ndarray]]:
     """
     Extracts the ground radar reflectivity and computes the path-integrated reflectivity.
+
     Parameters:
     ----------
     nradar: list of xarray.Dataset
@@ -117,15 +122,17 @@ def get_gr_reflectivity(
         Offset to add to the reflectivity of the ground radar data.
     gr_refl_threshold: float
         Minimum reflectivity threshold on ground radar data.
+
     Returns:
     -------
-    ground_radar_reflectivity: List[np.ndarray]
+    ground_radar_reflectivity: List[np.ma.MaskedArray]
         Array of ground radar reflectivity values for each radar tilt.
     pir_gr: List[np.ndarray]
         Array of path-integrated reflectivity values for ground radar for each radar tilt.
     """
     ground_radar_reflectivity = []
     pir_gr = []
+
     for radar in nradar:
         refl = radar[refl_name].values - gr_offset
         refl[refl < gr_refl_threshold] = np.nan
@@ -137,6 +144,25 @@ def get_gr_reflectivity(
         pir_gr.append(pir)
 
     return ground_radar_reflectivity, pir_gr
+
+
+def has_valid_data(arr: np.ma.MaskedArray, min_valid: int = MIN_REFL_SAMPLES) -> bool:
+    """
+    Check if array has sufficient valid (non-NaN) data.
+
+    Parameters:
+    ----------
+    arr: np.ma.MaskedArray
+        Array to check for valid data.
+    min_valid: int
+        Minimum number of valid samples required.
+
+    Returns:
+    -------
+    bool
+        True if array has sufficient valid data.
+    """
+    return len(arr) >= min_valid and not np.all(np.isnan(arr.filled(np.nan)))
 
 
 def volume_matching(
@@ -170,7 +196,7 @@ def volume_matching(
         Ground radar 3dB-beamwidth.
     gr_rmax: float
         Ground radar maximum range in meters (100,000 m). Actual max range used (up to 250,000 m).
-    gr_refl_thresold: float
+    gr_refl_threshold: float
         Minimum reflectivity threshold on ground radar data.
     radar_band: str
         Ground radar frequency band.
@@ -220,9 +246,8 @@ def volume_matching(
     zsat = gpmset.z.values[position_precip_domain]
     s_sat = np.sqrt(xsat**2 + ysat**2)
 
-    rsat = np.zeros(gpmset.zFactorCorrected.shape)
-    for i in range(rsat.shape[0]):
-        rsat[i, :] = gpmset.distance_from_sr.values
+    # Vectorized rsat initialization
+    rsat = np.tile(gpmset.distance_from_sr.values, (gpmset.zFactorCorrected.shape[0], 1))
 
     volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth)) ** 2  # km3
 
@@ -230,8 +255,25 @@ def volume_matching(
     reflectivity_gpm_grband = np.ma.masked_invalid(gpmset.reflectivity_grband.values[position_precip_domain])
 
     # Compute Path-integrated reflectivities
-    pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * 125)
+    pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * dr)
     pir_gpm = np.ma.masked_invalid(pir_gpm)
+
+    # Pre-compute ground radar meshgrids and volumes for each tilt
+    R_list = []
+    DT_list = []
+    volgr_list = []
+    beamwidth_rad = np.deg2rad(gr_beamwidth)
+    half_beamwidth = gr_beamwidth / 2
+
+    for jj in range(ntilt):
+        deltat = tradar[jj] - gpmset.overpass_time.values
+        R, _ = np.meshgrid(nradar[jj].range.values, nradar[jj].azimuth.values)
+        _, DT = np.meshgrid(nradar[jj].range.values, deltat)
+        volgr = 1e-9 * dr * (R * beamwidth_rad) ** 2  # km3
+
+        R_list.append(R)
+        DT_list.append(DT)
+        volgr_list.append(volgr)
 
     # Initialising output data.
     datakeys = [
@@ -267,11 +309,11 @@ def volume_matching(
     delta_t = np.zeros((nprof, ntilt)) + np.nan  # Timedelta of sample
 
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
-        if elev_gr[jj] - gr_beamwidth / 2 < 0:
+        if elev_gr[jj] - half_beamwidth < 0:
             # Beam partially in the ground.
             continue
 
-        epos = (elev_sat[ii, :] >= elev_gr[jj] - gr_beamwidth / 2) & (elev_sat[ii, :] <= elev_gr[jj] + gr_beamwidth / 2)
+        epos = (elev_sat[ii, :] >= elev_gr[jj] - half_beamwidth) & (elev_sat[ii, :] <= elev_gr[jj] + half_beamwidth)
         x[ii, jj] = np.mean(xsat[ii, epos])
         y[ii, jj] = np.mean(ysat[ii, epos])
         z[ii, jj] = np.mean(zsat[ii, epos])
@@ -279,9 +321,13 @@ def volume_matching(
         data["sample_gpm"][ii, jj] = np.sum(epos)  # Nb of profiles in layer
         data["volume_match_gpm"][ii, jj] = np.sum(volsat[ii, epos])  # Total GPM volume in layer
 
-        dz[ii, jj] = np.sum(epos) * gpmset.dr * np.cos(np.deg2rad(alpha[ii]))  # Thickness of the layer
+        # Cache repeated calculations
+        alpha_ii = alpha[ii]
+        cos_alpha = np.cos(np.deg2rad(alpha_ii))
+
+        dz[ii, jj] = np.sum(epos) * gpmset.dr * cos_alpha  # Thickness of the layer
         ds[ii, jj] = (
-            np.deg2rad(gpmset.beamwidth) * np.mean((gpmset.altitude - zsat[ii, epos])) / np.cos(np.deg2rad(alpha[ii]))
+            np.deg2rad(gpmset.beamwidth) * np.mean((gpmset.altitude - zsat[ii, epos])) / cos_alpha
         )  # Width of layer
         r[ii, jj] = (
             (gpmset.earth_gaussian_radius + zsat[ii, jj])
@@ -293,18 +339,20 @@ def volume_matching(
             # More than half the sample is outside of the radar last bin.
             continue
 
-        # Ground radar side:
-        deltat = tradar[jj] - gpmset.overpass_time.values
-        R, _ = np.meshgrid(nradar[jj].range.values, nradar[jj].azimuth.values)
-        _, DT = np.meshgrid(nradar[jj].range.values, deltat)
-        volgr = 1e-9 * dr * (R * np.deg2rad(gr_beamwidth)) ** 2  # km3
+        # Ground radar side - use pre-computed values
+        R = R_list[jj]
+        DT = DT_list[jj]
+        volgr = volgr_list[jj]
 
         roi_gr_at_vol = np.sqrt((xradar[jj] - x[ii, jj]) ** 2 + (yradar[jj] - y[ii, jj]) ** 2)
         rpos = roi_gr_at_vol <= ds[ii, jj] / 2
         if np.sum(rpos) == 0:
             continue
 
-        w = volgr[rpos] * np.exp(-((roi_gr_at_vol[rpos] / (ds[ii, jj] / 2)) ** 2))
+        # Simplified weight calculation
+        half_width = ds[ii, jj] / 2
+        normalized_distance = roi_gr_at_vol[rpos] / half_width
+        w = volgr[rpos] * np.exp(-(normalized_distance**2))
 
         # Extract reflectivity for volume.
         refl_gpm = refl_gpm_raw[ii, epos].flatten()
@@ -316,11 +364,8 @@ def volume_matching(
             # There's no data in the radar domain.
             continue
 
-        if len(refl_gpm) < 5 or len(refl_gr_raw) < 5:
-            continue
-        if np.all(np.isnan(refl_gpm.filled(np.nan))):
-            continue
-        if np.all(np.isnan(refl_gr_raw.filled(np.nan))):
+        # Check for valid data using helper function
+        if not (has_valid_data(refl_gpm) and has_valid_data(refl_gr_raw)):
             continue
 
         # FMIN parameter.
@@ -352,8 +397,8 @@ def volume_matching(
     data["elevation_gr"] = elev_gr[:ntilt]
     data["timedelta"] = delta_t
 
-    if np.sum((~np.isnan(data["refl_gpm_raw"])) & (~np.isnan(data["refl_gr_raw"]))) < 20:
-        raise NoRainError("At least 20 sample points are required.")
+    if np.sum((~np.isnan(data["refl_gpm_raw"])) & (~np.isnan(data["refl_gr_raw"]))) < MIN_SAMPLE_POINTS:
+        raise NoRainError(f"At least {MIN_SAMPLE_POINTS} sample points are required.")
 
     # Transform to xarray and build metadata
     match = dict()
@@ -379,7 +424,7 @@ def volume_matching(
     gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
     gpm_mindistance = np.sqrt(gpmset.x**2 + gpmset.y**2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
     offset = get_offset(matchset, dr)
-    if np.abs(offset) > 15:
+    if np.abs(offset) > MAX_OFFSET_THRESHOLD:
         raise ValueError(f"Offset of {offset} dB for {grfile} too big to mean anything.")
 
     matchset.attrs["offset_applied"] = gr_offset
@@ -407,11 +452,6 @@ def volume_matching(
     )
     matchset.attrs["naming_authority"] = "au.org.nci"
     matchset.attrs["summary"] = "GPM volume matching technique."
-    try:
-        history = f"Created by {matchset.attrs['creator_name']} on {platform.node()} at {matchset.attrs['date_created']} using Py-ART."
-    except Exception:
-        history = f"Created by {matchset.attrs['creator_name']} at {matchset.attrs['date_created']} using Py-ART."
-    matchset.attrs["history"] = history
     matchset.attrs["filename"] = generate_filename(nradar[0], gpmset, fname_prefix)
 
     return matchset
@@ -450,7 +490,7 @@ def vmatch_multi_pass(
         Ground radar 3dB-beamwidth.
     gr_rmax: float
         Ground radar maximum range in meters (100,000 m).
-    gr_refl_thresold: float
+    gr_refl_threshold: float
         Minimum reflectivity threshold on ground radar data.
     radar_band: str
         Ground radar frequency band.
@@ -476,15 +516,15 @@ def vmatch_multi_pass(
         dset.attrs["offset_history"] = ",".join([f"{float(i):0.3}" for i in offset_keeping_track])
         filename = dset.attrs["filename"].replace(".nc", f".pass{counter}.nc")
 
-        outfilename = os.path.join(output_directory, filename)
-        print(f"Saving {os.path.basename(outfilename)} to {output_directory}.")
-        dset.to_netcdf(outfilename, encoding={k: {"zlib": True} for k in [k for k, _ in dset.items()]})
+        outfilename = Path(output_directory) / filename
+        print(f"Saving {outfilename.name} to {output_directory}.")
+        dset.to_netcdf(str(outfilename), encoding={k: {"zlib": True} for k in dset.data_vars})
 
         # Check if the file was created successfully.
-        if os.path.exists(os.path.join(outfilename)):
-            print(f"{os.path.basename(outfilename)} written to {output_directory}.")
+        if outfilename.exists():
+            print(f"{outfilename.name} written to {output_directory}.")
         else:
-            print(f"Error writing {os.path.basename(outfilename)} to {output_directory}.")
+            print(f"Error writing {outfilename.name} to {output_directory}.")
             raise FileNotFoundError(f"File {outfilename} could not be created.")
 
         return None
@@ -494,17 +534,18 @@ def vmatch_multi_pass(
         fname_prefix = "unknown_radar"
         print(f"No 'fname_prefix' defined. The output files will be named {fname_prefix}")
     if output_dir is None:
-        output_dir = os.getcwd()
+        output_dir = str(Path.cwd())
         print(f"No 'output_dir' defined. The output files will be saved {output_dir}")
 
     # Generate output directories.
     output_dirs = {
-        "first": os.path.join(output_dir, "first_pass"),
-        "final": os.path.join(output_dir, "final_pass"),
+        "first": Path(output_dir) / "first_pass",
+        "final": Path(output_dir) / "final_pass",
     }
-    [os.makedirs(v, exist_ok=True) for _, v in output_dirs.items()]
+    for dir_path in output_dirs.values():
+        dir_path.mkdir(parents=True, exist_ok=True)
 
-    # Function arguments dictionnary.
+    # Function arguments dictionary.
     kwargs = {
         "gpmfile": gpmfile,
         "grfile": grfile,
@@ -528,14 +569,14 @@ def vmatch_multi_pass(
     kwargs["gr_offset"] = pass_offset  # Update offset in kwargs for next pass
     offset_keeping_track = [pass_offset]
     final_offset_keeping_track = [matchset.attrs["final_offset"]]
-    _save(matchset, output_dirs["first"])
+    _save(matchset, str(output_dirs["first"]))
 
     if np.isnan(pass_offset):
         dtime = matchset.attrs["gpm_overpass_time"]
         print(f"Offset is NAN for pass {counter} on {dtime}.")
         return None
 
-    # Multiple pass as long as the difference is more than 1dB or counter is 6
+    # Multiple pass as long as the difference is more than threshold or counter is 6
     if np.abs(pass_offset) > offset_thld:
         for counter in range(1, 6):
             with warnings.catch_warnings():
@@ -563,5 +604,5 @@ def vmatch_multi_pass(
                 break
 
     # Save final iteration.
-    _save(matchset, output_dirs["final"])
+    _save(matchset, str(output_dirs["final"]))
     return None
