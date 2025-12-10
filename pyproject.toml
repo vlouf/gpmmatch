@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpmmatch"
+version = "1.4.0"
+description = "Volume matching of ground radar and GPM satellite data."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Valentin Louf", email = "valentin.louf@bom.gov.au"}
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Environment :: Jupyter",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "h5py",
+    "netCDF4",
+    "xarray",
+    "pyodim",
+    "pyproj",
+]
+
+[project.urls]
+Documentation = "https://github.com/vlouf/gpmmatch#readme"
+Source = "https://github.com/vlouf/gpmmatch"
+Tracker = "https://github.com/vlouf/gpmmatch/issues"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "example", "notebooks"]
+
+[tool.setuptools.package-data]
+gpmmatch = ["data/radar_site_list.csv"]
