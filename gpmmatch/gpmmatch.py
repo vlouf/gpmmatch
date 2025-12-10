@@ -233,19 +233,6 @@ def volume_matching(
     pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * 125)
     pir_gpm = np.ma.masked_invalid(pir_gpm)
 
-    # Pre-compute the ground radar coordinates and volume.
-    R2d_list = []  # Indexed by tilt
-    delta_t_list = []
-    volgr_list = []
-    for jj in range(ntilt):
-        # Get the ground radar range and azimuth.
-        deltat = nradar[jj].time - gpmset.overpass_time.values
-        R, DT = np.meshgrid(nradar[jj].range.values, deltat)
-        volgr = 1e-9 * dr * (R * np.deg2rad(gr_beamwidth)) ** 2  # km3
-        R2d_list.append(R)
-        delta_t_list.append(DT)
-        volgr_list.append(volgr)
-
     # Initialising output data.
     datakeys = [
         "refl_gpm_raw",
@@ -307,9 +294,10 @@ def volume_matching(
             continue
 
         # Ground radar side:
-        R = R2d_list[jj]
-        DT = delta_t_list[jj]
-        volgr = volgr_list[jj]
+        deltat = tradar[jj] - gpmset.overpass_time.values
+        R, _ = np.meshgrid(nradar[jj].range.values, nradar[jj].azimuth.values)
+        _, DT = np.meshgrid(nradar[jj].range.values, deltat)
+        volgr = 1e-9 * dr * (R * np.deg2rad(gr_beamwidth)) ** 2  # km3
 
         roi_gr_at_vol = np.sqrt((xradar[jj] - x[ii, jj]) ** 2 + (yradar[jj] - y[ii, jj]) ** 2)
         rpos = roi_gr_at_vol <= ds[ii, jj] / 2
