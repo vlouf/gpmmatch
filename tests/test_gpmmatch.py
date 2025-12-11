@@ -35,7 +35,7 @@ def sample_radar_dataset():
             "corrected_reflectivity": (["time", "range"], np.random.uniform(10, 50, (ntime, nrange))),
         },
         coords={
-            "time": pd.date_range("2018-11-20 05:36:30", periods=ntime, freq="10S"),
+            "time": pd.date_range("2018-11-20 05:36:30", periods=ntime, freq="10s"),
             "range": np.arange(1000, 1000 + nrange * 250, 250),
             "x": (["time", "range"], np.random.uniform(-50000, 50000, (ntime, nrange))),
             "y": (["time", "range"], np.random.uniform(-50000, 50000, (ntime, nrange))),
@@ -74,7 +74,7 @@ def sample_gpm_dataset():
             "flagPrecip": (["nscan", "nray"], np.random.choice([0, 1, 2], size=(nscan, nray))),
         },
         coords={
-            "nscan": pd.date_range("2018-11-20 05:33:41", periods=nscan, freq="1S"),
+            "nscan": pd.date_range("2018-11-20 05:33:41", periods=nscan, freq="1s"),
             "nray": np.arange(nray),
             "x": (["nscan", "nray", "nbin"], np.random.uniform(-100000, 100000, (nscan, nray, nbin))),
             "y": (["nscan", "nray", "nbin"], np.random.uniform(-100000, 100000, (nscan, nray, nbin))),
