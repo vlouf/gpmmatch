@@ -28,6 +28,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import pandas as pd
 import xarray as xr
+from scipy.spatial import cKDTree
 
 from .correct import get_offset
 from .io import data_load_and_checks
@@ -234,50 +235,90 @@ def volume_matching(
     if gr_rmax is None:
         gr_rmax = range_gr.max() if range_gr.max() < 250e3 else 250e3
 
-    # Extract GPM data.
-    position_precip_domain = gpmset.precip_in_gr_domain.values != 0
+    # Cache nradar attributes
+    nradar_range = [nr.range.values for nr in nradar]
+    nradar_azimuth = [nr.azimuth.values for nr in nradar]
 
-    alpha, _ = np.meshgrid(gpmset.nray, gpmset.nscan)
+    # Extract and cache GPM data
+    position_precip_domain = gpmset.precip_in_gr_domain.values != 0
+    gpm_nray = gpmset.nray.values
+    gpm_nscan = gpmset.nscan.values
+    gpm_elev_from_gr = gpmset.elev_from_gr.values
+    gpm_x = gpmset.x.values
+    gpm_y = gpmset.y.values
+    gpm_z = gpmset.z.values
+    gpm_dr = gpmset.dr
+    gpm_beamwidth = gpmset.beamwidth
+    gpm_altitude = gpmset.altitude
+    gpm_earth_radius = gpmset.earth_gaussian_radius
+    gpm_distance_from_sr = gpmset.distance_from_sr.values
+    gpm_zfactor = gpmset.zFactorCorrected.values
+    gpm_refl_grband = gpmset.reflectivity_grband.values
+    gpm_overpass_time = gpmset.overpass_time.values
+
+    alpha, _ = np.meshgrid(gpm_nray, gpm_nscan)
     alpha = alpha[position_precip_domain]
 
-    elev_sat = gpmset.elev_from_gr.values[position_precip_domain]
-    xsat = gpmset.x.values[position_precip_domain]
-    ysat = gpmset.y.values[position_precip_domain]
-    zsat = gpmset.z.values[position_precip_domain]
-    s_sat = np.sqrt(xsat**2 + ysat**2)
+    elev_sat = gpm_elev_from_gr[position_precip_domain]
+    xsat = gpm_x[position_precip_domain]
+    ysat = gpm_y[position_precip_domain]
+    zsat = gpm_z[position_precip_domain]
 
-    # Initialize rsat - same as original code to maintain compatibility
-    rsat = np.zeros(gpmset.zFactorCorrected.shape)
+    rsat = np.zeros(gpm_zfactor.shape)
     for i in range(rsat.shape[0]):
-        rsat[i, :] = gpmset.distance_from_sr.values
+        rsat[i, :] = gpm_distance_from_sr
 
-    volsat = 1e-9 * gpmset.dr * (rsat[position_precip_domain] * np.deg2rad(gpmset.beamwidth)) ** 2  # km3
+    volsat = 1e-9 * gpm_dr * (rsat[position_precip_domain] * np.deg2rad(gpm_beamwidth)) ** 2
 
-    refl_gpm_raw = np.ma.masked_invalid(gpmset.zFactorCorrected.values[position_precip_domain])
-    reflectivity_gpm_grband = np.ma.masked_invalid(gpmset.reflectivity_grband.values[position_precip_domain])
+    refl_gpm_raw = np.ma.masked_invalid(gpm_zfactor[position_precip_domain])
+    reflectivity_gpm_grband = np.ma.masked_invalid(gpm_refl_grband[position_precip_domain])
 
     # Compute Path-integrated reflectivities
     pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * dr)
     pir_gpm = np.ma.masked_invalid(pir_gpm)
 
-    # Pre-compute ground radar meshgrids and volumes for each tilt
-    R_list = []
-    DT_list = []
-    volgr_list = []
+    # Pre-compute and cache everything
     beamwidth_rad = np.deg2rad(gr_beamwidth)
     half_beamwidth = gr_beamwidth / 2
 
+    # Pre-compute for each tilt
+    R_list = []
+    DT_list = []
+    volgr_list = []
+    kdtree_list = []
+    xradar_flat_list = []
+    yradar_flat_list = []
+    gr_refl_flat_list = []
+    pir_gr_flat_list = []
+    orig_shapes = []
+
     for jj in range(ntilt):
-        deltat = tradar[jj] - gpmset.overpass_time.values
-        R, _ = np.meshgrid(nradar[jj].range.values, nradar[jj].azimuth.values)
-        _, DT = np.meshgrid(nradar[jj].range.values, deltat)
-        volgr = 1e-9 * dr * (R * beamwidth_rad) ** 2  # km3
+        deltat = tradar[jj] - gpm_overpass_time
+        R, _ = np.meshgrid(nradar_range[jj], nradar_azimuth[jj])
+        _, DT = np.meshgrid(nradar_range[jj], deltat)
+        volgr = 1e-9 * dr * (R * beamwidth_rad) ** 2
 
         R_list.append(R)
         DT_list.append(DT)
         volgr_list.append(volgr)
 
-    # Initialising output data.
+        # Flatten and cache all arrays
+        x_flat = xradar[jj].ravel()
+        y_flat = yradar[jj].ravel()
+        xradar_flat_list.append(x_flat)
+        yradar_flat_list.append(y_flat)
+
+        orig_shapes.append(xradar[jj].shape)
+
+        # Build KDTree
+        xy_coords = np.column_stack([x_flat, y_flat])
+        kdtree_list.append(cKDTree(xy_coords))
+
+        # Pre-flatten data arrays
+        gr_refl_flat_list.append(ground_radar_reflectivity[jj].ravel())
+        pir_gr_flat_list.append(pir_gr[jj].ravel())
+
+    # Initialize output
     datakeys = [
         "refl_gpm_raw",
         "refl_gr_weigthed",
@@ -296,99 +337,111 @@ def volume_matching(
         "volume_match_gpm",
         "volume_match_gr",
     ]
+    data = {k: np.full((nprof, ntilt), np.nan) for k in datakeys}
 
-    data = dict()
-    for k in datakeys:
-        data[k] = np.zeros((nprof, ntilt)) + np.nan
+    x = np.zeros((nprof, ntilt))
+    y = np.zeros((nprof, ntilt))
+    z = np.zeros((nprof, ntilt))
+    r = np.zeros((nprof, ntilt))
+    dz = np.zeros((nprof, ntilt))
+    ds = np.zeros((nprof, ntilt))
+    delta_t = np.full((nprof, ntilt), np.nan)
 
-    # For sake of simplicity, coordinates are just ndarray, they will be put in the 'data' dict after the matching process
-    x = np.zeros((nprof, ntilt))  # x coordinate of sample
-    y = np.zeros((nprof, ntilt))  # y coordinate of sample
-    z = np.zeros((nprof, ntilt))  # z coordinate of sample
-    r = np.zeros((nprof, ntilt))  # range of sample from ground radar
-    dz = np.zeros((nprof, ntilt))  # depth of sample
-    ds = np.zeros((nprof, ntilt))  # width of sample
-    delta_t = np.zeros((nprof, ntilt)) + np.nan  # Timedelta of sample
-
+    # Optimized main loop
     for ii, jj in itertools.product(range(nprof), range(ntilt)):
         if elev_gr[jj] - half_beamwidth < 0:
-            # Beam partially in the ground.
             continue
 
         epos = (elev_sat[ii, :] >= elev_gr[jj] - half_beamwidth) & (elev_sat[ii, :] <= elev_gr[jj] + half_beamwidth)
-        x[ii, jj] = np.mean(xsat[ii, epos])
-        y[ii, jj] = np.mean(ysat[ii, epos])
-        z[ii, jj] = np.mean(zsat[ii, epos])
+        if not np.any(epos):
+            continue
 
-        data["sample_gpm"][ii, jj] = np.sum(epos)  # Nb of profiles in layer
-        data["volume_match_gpm"][ii, jj] = np.sum(volsat[ii, epos])  # Total GPM volume in layer
+        x[ii, jj] = x_mean = np.mean(xsat[ii, epos])
+        y[ii, jj] = y_mean = np.mean(ysat[ii, epos])
+        z[ii, jj] = z_mean = np.mean(zsat[ii, epos])
 
-        # Cache repeated calculations
+        data["sample_gpm"][ii, jj] = n_epos = np.sum(epos)
+        data["volume_match_gpm"][ii, jj] = np.sum(volsat[ii, epos])
+
         alpha_ii = alpha[ii]
         cos_alpha = np.cos(np.deg2rad(alpha_ii))
 
-        dz[ii, jj] = np.sum(epos) * gpmset.dr * cos_alpha  # Thickness of the layer
-        ds[ii, jj] = (
-            np.deg2rad(gpmset.beamwidth) * np.mean((gpmset.altitude - zsat[ii, epos])) / cos_alpha
-        )  # Width of layer
-        r[ii, jj] = (
-            (gpmset.earth_gaussian_radius + zsat[ii, jj])
-            * np.sin(s_sat[ii, jj] / gpmset.earth_gaussian_radius)
-            / np.cos(np.deg2rad(elev_gr[jj]))
-        )
+        dz[ii, jj] = n_epos * gpm_dr * cos_alpha
+        ds[ii, jj] = np.deg2rad(gpm_beamwidth) * np.mean(gpm_altitude - zsat[ii, epos]) / cos_alpha
+
+        # Calculate s_sat for this specific profile
+        s_sat_ii = np.sqrt(x_mean**2 + y_mean**2)
+        r[ii, jj] = (gpm_earth_radius + z_mean) * np.sin(s_sat_ii / gpm_earth_radius) / np.cos(np.deg2rad(elev_gr[jj]))
 
         if r[ii, jj] + ds[ii, jj] / 2 > gr_rmax:
-            # More than half the sample is outside of the radar last bin.
+            continue
+        if np.isnan(x_mean) or np.isnan(y_mean) or np.isnan(ds[ii, jj]):
             continue
 
-        # Ground radar side - use pre-computed values
-        R = R_list[jj]
-        DT = DT_list[jj]
-        volgr = volgr_list[jj]
+        # KDTree query with pre-allocated arrays
+        search_radius = ds[ii, jj] / 2
+        indices_flat = kdtree_list[jj].query_ball_point([x_mean, y_mean], search_radius)
 
-        roi_gr_at_vol = np.sqrt((xradar[jj] - x[ii, jj]) ** 2 + (yradar[jj] - y[ii, jj]) ** 2)
-        rpos = roi_gr_at_vol <= ds[ii, jj] / 2
-        if np.sum(rpos) == 0:
+        if not indices_flat:
             continue
 
-        # Simplified weight calculation
-        half_width = ds[ii, jj] / 2
-        normalized_distance = roi_gr_at_vol[rpos] / half_width
-        w = volgr[rpos] * np.exp(-(normalized_distance ** 2))
+        # Use flat indices directly - faster than unravel
+        xradar_subset = xradar_flat_list[jj][indices_flat]
+        yradar_subset = yradar_flat_list[jj][indices_flat]
 
-        # Extract reflectivity for volume.
-        refl_gpm = refl_gpm_raw[ii, epos].flatten()
-        refl_gpm_grband = reflectivity_gpm_grband[ii, epos].flatten()
-        refl_gr_raw = ground_radar_reflectivity[jj][rpos].flatten()
+        # Vectorized distance calculation
+        dx = xradar_subset - x_mean
+        dy = yradar_subset - y_mean
+        roi_gr_at_vol = np.sqrt(dx*dx + dy*dy)
+
+        # Get data using flat indices
+        volgr_subset = volgr_list[jj].ravel()[indices_flat]
+        R_subset = R_list[jj].ravel()[indices_flat]
+        DT_subset = DT_list[jj].ravel()[indices_flat]
+
+        # Weight calculation
+        normalized_distance = roi_gr_at_vol / search_radius
+        w = volgr_subset * np.exp(-(normalized_distance ** 2))
+
+        # Extract reflectivity
+        refl_gpm = refl_gpm_raw[ii, epos]
+        refl_gpm_grband = reflectivity_gpm_grband[ii, epos]
+        refl_gr_raw = gr_refl_flat_list[jj][indices_flat]
+        pir_gr_flat = pir_gr_flat_list[jj][indices_flat]
+
         try:
-            delta_t[ii, jj] = np.max(DT[rpos])
+            delta_t[ii, jj] = np.max(DT_subset)
         except ValueError:
-            # There's no data in the radar domain.
             continue
 
-        # Check for valid data using helper function
         if not (has_valid_data(refl_gpm) and has_valid_data(refl_gr_raw)):
             continue
 
-        # FMIN parameter.
-        data["fmin_gpm"][ii, jj] = np.sum(refl_gpm > 0) / len(refl_gpm)
-        data["fmin_gr"][ii, jj] = np.sum(refl_gr_raw >= gr_refl_threshold) / len(refl_gr_raw)
+        # Statistics - use compressed() for masked arrays to avoid overhead
+        refl_gpm_compressed = refl_gpm.compressed()
+        refl_gr_compressed = refl_gr_raw.compressed()
 
-        # GPM
-        data["refl_gpm_raw"][ii, jj] = np.mean(refl_gpm)
-        data["refl_gpm_grband"][ii, jj] = np.mean(refl_gpm_grband)
-        data["pir_gpm"][ii, jj] = np.mean(pir_gpm[ii, epos].flatten())
-        data["std_refl_gpm"][ii, jj] = np.std(refl_gpm)
-        data["reject_gpm"][ii, jj] = np.sum(epos) - np.sum(refl_gpm.mask)  # Number of rejected bins
+        data["fmin_gpm"][ii, jj] = np.sum(refl_gpm_compressed > 0) / len(refl_gpm_compressed) if len(refl_gpm_compressed) > 0 else np.nan
+        data["fmin_gr"][ii, jj] = np.sum(refl_gr_compressed >= gr_refl_threshold) / len(refl_gr_compressed) if len(refl_gr_compressed) > 0 else np.nan
 
-        # Ground radar.
-        data["volume_match_gr"][ii, jj] = np.sum(volgr[rpos])
-        data["refl_gr_weigthed"][ii, jj] = np.sum(w * refl_gr_raw) / np.sum(w[~refl_gr_raw.mask])
-        data["refl_gr_raw"][ii, jj] = np.mean(refl_gr_raw)
-        data["pir_gr"][ii, jj] = np.mean(pir_gr[jj][rpos].flatten())
-        data["std_refl_gr"][ii, jj] = np.std(refl_gr_raw)
-        data["reject_gr"][ii, jj] = np.sum(rpos)
-        data["sample_gr"][ii, jj] = np.sum(~refl_gr_raw.mask)
+        data["refl_gpm_raw"][ii, jj] = np.mean(refl_gpm_compressed) if len(refl_gpm_compressed) > 0 else np.nan
+        data["refl_gpm_grband"][ii, jj] = np.ma.mean(refl_gpm_grband)
+        data["pir_gpm"][ii, jj] = np.ma.mean(pir_gpm[ii, epos])
+        data["std_refl_gpm"][ii, jj] = np.std(refl_gpm_compressed) if len(refl_gpm_compressed) > 0 else np.nan
+        data["reject_gpm"][ii, jj] = n_epos - len(refl_gpm_compressed)
+
+        data["volume_match_gr"][ii, jj] = np.sum(volgr_subset)
+
+        # Weighted mean - avoid creating new masked arrays
+        valid_mask = ~refl_gr_raw.mask if np.ma.is_masked(refl_gr_raw) else np.ones(len(refl_gr_raw), dtype=bool)
+        if np.any(valid_mask):
+            data["refl_gr_weigthed"][ii, jj] = np.sum(w[valid_mask] * refl_gr_raw.data[valid_mask]) / np.sum(w[valid_mask])
+
+        data["refl_gr_raw"][ii, jj] = np.mean(refl_gr_compressed) if len(refl_gr_compressed) > 0 else np.nan
+        data["pir_gr"][ii, jj] = np.ma.mean(pir_gr_flat)
+        data["std_refl_gr"][ii, jj] = np.std(refl_gr_compressed) if len(refl_gr_compressed) > 0 else np.nan
+        data["reject_gr"][ii, jj] = len(indices_flat)
+        data["sample_gr"][ii, jj] = len(refl_gr_compressed)
 
     data["x"] = x
     data["y"] = y
@@ -402,8 +455,8 @@ def volume_matching(
     if np.sum((~np.isnan(data["refl_gpm_raw"])) & (~np.isnan(data["refl_gr_raw"]))) < MIN_SAMPLE_POINTS:
         raise NoRainError(f"At least {MIN_SAMPLE_POINTS} sample points are required.")
 
-    # Transform to xarray and build metadata
-    match = dict()
+    # Transform to xarray
+    match = {}
     for k, v in data.items():
         if k in ["ntilt", "elevation_gr"]:
             match[k] = (("ntilt"), v)
@@ -421,10 +474,10 @@ def volume_matching(
             except KeyError:
                 continue
 
-    ar = gpmset.x**2 + gpmset.y**2
+    ar = gpm_x**2 + gpm_y**2
     iscan, _, _ = np.where(ar == ar.min())
-    gpm_overpass_time = pd.Timestamp(gpmset.nscan[iscan[0]].values).isoformat()
-    gpm_mindistance = np.sqrt(gpmset.x**2 + gpmset.y**2)[:, :, 0].values[gpmset.flagPrecip > 0].min()
+    gpm_overpass_time_iso = pd.Timestamp(gpm_nscan[iscan[0]]).isoformat()
+    gpm_mindistance = np.sqrt(gpm_x**2 + gpm_y**2)[:, :, 0][gpmset.flagPrecip.values > 0].min()
     offset = get_offset(matchset, dr)
     if np.abs(offset) > MAX_OFFSET_THRESHOLD:
         raise ValueError(f"Offset of {offset} dB for {grfile} too big to mean anything.")
@@ -433,7 +486,7 @@ def volume_matching(
     matchset.attrs["offset_found"] = offset
     matchset.attrs["final_offset"] = gr_offset + offset
     matchset.attrs["estimated_calibration_offset"] = f"{offset:0.4} dB"
-    matchset.attrs["gpm_overpass_time"] = gpm_overpass_time
+    matchset.attrs["gpm_overpass_time"] = gpm_overpass_time_iso
     matchset.attrs["gpm_min_distance"] = np.round(gpm_mindistance)
     matchset.attrs["gpm_orbit"] = gpmset.attrs["orbit"]
     matchset.attrs["radar_start_time"] = nradar[0].attrs["start_time"]

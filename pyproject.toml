@@ -29,6 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
+    "scipy",
     "pandas",
     "h5py",
     "netCDF4",
