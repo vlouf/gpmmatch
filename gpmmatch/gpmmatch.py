@@ -143,7 +143,7 @@ def get_gr_reflectivity(
         refl = np.ma.masked_invalid(refl)
         ground_radar_reflectivity.append(refl)
 
-        dr = (radar.range[1] - radar.range[0]).values  # Range resolution in meters
+        dr = (radar.range[1].values - radar.range[0].values)  # Range resolution in meters
         pir = 10 * np.log10(np.cumsum((10 ** (refl / 10)).filled(0), axis=1) * dr)
         pir_gr.append(pir)
 
@@ -594,6 +594,9 @@ def vmatch_multi_pass(
     if output_dir is None:
         output_dir = str(Path.cwd())
         print(f"No 'output_dir' defined. The output files will be saved {output_dir}")
+    if correct_attenuation and radar_band not in ["C", "X"]:
+        print(f"Attenuation correction is only available for C- and X-band radars. Setting 'correct_attenuation' to False.")
+        correct_attenuation = False
 
     # Generate output directories.
     output_dirs = {
