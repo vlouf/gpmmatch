@@ -85,32 +85,90 @@ def convert_gpmrefl_grband_dfr(refl_gpm: np.ndarray, radar_band: str) -> np.ndar
     return refl_gpm + dfr(refl_gpm)
 
 
-def correct_attenuation(reflectivity: np.ndarray, radar_band: str) -> np.ndarray:
+def attenuation_correction_zphi(zh: np.ndarray, kdp: np.ndarray, dr: float=1, wavelength: str='C') -> np.ndarray:
     """
-    Correct from C- or X-Band attenuation using a Z-A relationship derived from
-    T-matrix calculations using the Meteor disdrometer.
+    Attenuation correction using the ZPHI method.
 
     Parameters:
-    ===========
-    reflectivity: ndarray
-        Input attenuated reflectivity
+    -----------
+    zh : array-like
+        Horizontal reflectivity (dBZ)
+    kdp : array-like
+        Specific differential phase (deg/km)
+    dr : float
+        Range gate spacing in km
+    wavelength : str
+        'C' for C-band (~5.3 cm) or 'X' for X-band (~3.2 cm)
 
     Returns:
-    ========
-    corr_refl: ndarray
-        Attenuation-corrected reflectivity.
+    --------
+    zh_corrected : array
+        Attenuation-corrected horizontal reflectivity (dBZ)    
     """
-    ze = 10 ** (reflectivity / 10)
-    if radar_band == "X":
-        atten = 3.30240183e-6 * ze + 9.67774379e-2
-    elif radar_band == "C":
-        atten = 1.31885e-6 * ze + 1.8041e-3
-    else:
-        # Doesnt correct.
-        return reflectivity
+    if dr > 10:
+        raise ValueError("Range gate spacing 'dr' seems too large (>10 km). Check input.")
 
-    corr_refl = reflectivity + 2 * np.cumsum(atten, axis=1)
-    return corr_refl
+    if wavelength.upper() == 'C':
+        # C-band coefficients (Bringi et al. 2001)
+        alpha_h = 0.08  # coefficient for Ah = alpha * Kdp^beta
+        beta_h = 0.93
+
+    elif wavelength.upper() == 'X':
+        # X-band coefficients (Park et al. 2005)
+        alpha_h = 0.28
+        beta_h = 0.95
+    else:
+        raise ValueError("Wavelength must be 'C' or 'X'")
+
+    # Calculate specific attenuation
+    ah = alpha_h * np.power(np.abs(kdp), beta_h) * np.sign(kdp)
+    PIA_h = np.nancumsum(ah * dr, axis=1)  # Path Integrated Attenuation for Zh
+    zh_corrected = zh + 2 * PIA_h  # Factor of 2 for two-way path
+
+    return zh_corrected
+
+
+def attenuation_correction_gunn_east(zh: np.ndarray, dr: float=1, wavelength: str='C', max_thld: float=10) -> np.ndarray:
+    """
+    Attenuation correction using Gunn and East (1954) method.
+    This is based on the power-law relationship. 
+    Eq. 2.66 p 106 of radar meteorology by Henri Sauvagot.
+
+    Parameters:
+    -----------
+    zh : array-like
+        Horizontal reflectivity in dBZ along a radial
+    dr : float
+        Range gate spacing in km
+    wavelength : str
+        'C' for C-band or 'X' for X-band
+    max_thld: float
+        Capped-attenuation correction to avoid blowing up the refl in dB. 
+        
+    Returns:
+    --------
+    zh_corrected : array
+        Attenuation-corrected reflectivity (dBZ)
+    """
+    if dr > 10:
+        raise ValueError("Range gate spacing 'dr' seems too large (>10 km). Check input.")    
+    if wavelength.upper() == 'C':
+        l = 5.5
+    elif wavelength.upper() == 'X':
+        l = 3.2
+    else:
+        raise ValueError("Wavelength must be 'C' or 'X'")
+    
+    # Convert dBZ to linear Z (mm^6/m^3)
+    Z_linear = 10 ** (zh / 10.0)  
+    R = (Z_linear / 200) ** (1 / 1.6)
+    ap = 0.35e-2 * R ** 1.6 / (l ** 4) + 0.22e-2 * R / l
+    
+    PIA_h = np.nancumsum(ap * dr, axis=1)
+    PIA_h[PIA_h > max_thld / 2] = max_thld / 2
+    Z_corrected = zh + 2 * PIA_h
+
+    return Z_corrected
 
 
 def correct_parallax(

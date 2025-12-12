@@ -135,7 +135,10 @@ def get_gr_reflectivity(
     pir_gr = []
 
     for radar in nradar:
-        refl = radar[refl_name].values - gr_offset
+        if "ZH_ATTEN_CORR" in radar.data_vars:
+            refl = radar["ZH_ATTEN_CORR"].values.copy() - gr_offset
+        else:
+            refl = radar[refl_name].values.copy() - gr_offset
         refl[refl < gr_refl_threshold] = np.nan
         refl = np.ma.masked_invalid(refl)
         ground_radar_reflectivity.append(refl)

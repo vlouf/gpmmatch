@@ -386,7 +386,7 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
 
 
 def read_radar(
-    grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False
+    grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False, kdp_name: str = "KDP"
 ) -> List[xr.Dataset]:
     """
     Read ground radar data. If 2 files provided, then it will compute the
@@ -409,10 +409,23 @@ def read_radar(
     if nradar[-1].elevation.max() > 80:
         nradar.pop(-1)
 
-    for idx in range(len(nradar)):
-        if correct_attenuation:
-            if radar_band in ["X", "C"]:  # Correct attenuation of X or C bands.
-                corr_refl = correct.correct_attenuation(nradar[idx][refl_name].values, radar_band)
-                nradar[idx][refl_name].values = corr_refl
+    method = None
+    if correct_attenuation and radar_band in ["X", "C"]:  # Correct attenuation of X or C bands.
+        for idx, radar in enumerate(nradar):
+            zh = radar[refl_name].values.copy()
+            dr = (radar.range[1] - radar.range[0]) / 1e3
+            if kdp_name in radar:
+                kdp = radar[kdp_name].values.copy()
+                kdp[np.isnan(kdp)] = 0
+                zh_corrected = correct.attenuation_correction_zphi(zh, kdp, dr=dr, wavelength=radar_band)
+                method = "ZPHI"
+            else:
+                zh_corrected = correct.attenuation_correction_gunn_east(zh, dr=dr, wavelength=radar_band)
+                method = "Gunn-East"
+
+            nradar[idx] = nradar[idx].merge({"ZH_ATTEN_CORR": (("azimuth", "range"), zh_corrected)})
+
+    if method is not None:
+        print(f"GR reflectivity corrected for attenuation using {method} in band {radar_band}")
 
     return nradar

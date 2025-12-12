@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gpmmatch"
-version = "1.5.0"
+version = "1.5.1"
 description = "Volume matching of ground radar and GPM satellite data."
 readme = "README.md"
 requires-python = ">=3.9"
