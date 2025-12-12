@@ -413,7 +413,7 @@ def read_radar(
     if correct_attenuation and radar_band in ["X", "C"]:  # Correct attenuation of X or C bands.
         for idx, radar in enumerate(nradar):
             zh = radar[refl_name].values.copy()
-            dr = (radar.range[1] - radar.range[0]) / 1e3
+            dr = 1e-3 * (radar.range.values[1] - radar.range.values[0])  # in km
             if kdp_name in radar:
                 kdp = radar[kdp_name].values.copy()
                 kdp[np.isnan(kdp)] = 0
