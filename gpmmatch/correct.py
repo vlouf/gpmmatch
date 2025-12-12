@@ -5,15 +5,16 @@ Various utilities for correction and conversion of satellite data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 29/05/2025
+@date: 12/05/2025
 
 .. autosummary::
     :toctree: generated/
 
     compute_gaussian_curvature
-    convert_sat_refl_to_gr_band
-    correct_attenuation
+    convert_sat_refl_to_gr_band    
     correct_parallax
+    attenuation_correction_zphi
+    attenuation_correction_gunn_east
     get_offset
     grid_displacement
 """

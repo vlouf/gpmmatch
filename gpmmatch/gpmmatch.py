@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 10/12/2025
+@date: 12/12/2025
 
 .. autosummary::
     :toctree: generated/
@@ -134,9 +134,11 @@ def get_gr_reflectivity(
     ground_radar_reflectivity = []
     pir_gr = []
 
+    using_corrected_field = False
     for radar in nradar:
         if "ZH_ATTEN_CORR" in radar.data_vars:
             refl = radar["ZH_ATTEN_CORR"].values.copy() - gr_offset
+            using_corrected_field = True
         else:
             refl = radar[refl_name].values.copy() - gr_offset
         refl[refl < gr_refl_threshold] = np.nan
@@ -146,6 +148,9 @@ def get_gr_reflectivity(
         dr = (radar.range[1].values - radar.range[0].values)  # Range resolution in meters
         pir = 10 * np.log10(np.cumsum((10 ** (refl / 10)).filled(0), axis=1) * dr)
         pir_gr.append(pir)
+
+    if using_corrected_field:
+        print("Using attenuation-corrected reflectivity field for ground radar.")
 
     return ground_radar_reflectivity, pir_gr
 
