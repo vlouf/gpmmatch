@@ -99,6 +99,7 @@ def data_load_and_checks(
     refl_name: Union[str, None] = None,
     correct_attenuation: bool = True,
     radar_band: str = "C",
+    kdp_name: Union[str, None] = "KDP",
 ) -> Tuple[xr.Dataset, List[xr.Dataset]]:
     """
     Load GPM and Ground radar files and perform some initial checks:
@@ -120,6 +121,8 @@ def data_load_and_checks(
     radar_band: str
         Ground radar frequency band for reflectivity conversion. S, C, and X
         supported.
+    kdp_name: Optional[str]
+        Name of the KDP field in the ground radar data for attenuation correction.
 
     Returns:
     --------
@@ -197,7 +200,9 @@ def data_load_and_checks(
     gpmset.attrs["earth_gaussian_radius"] = gr_gaussian_radius
 
     # Time to read the ground radar data.
-    radar = read_radar(grfile, refl_name, radar_band=radar_band, correct_attenuation=correct_attenuation)
+    radar = read_radar(
+        grfile, refl_name, radar_band=radar_band, correct_attenuation=correct_attenuation, kdp_name=kdp_name
+    )
 
     return gpmset, radar
 
@@ -386,7 +391,11 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
 
 
 def read_radar(
-    grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False, kdp_name: str = "KDP"
+    grfile: str,
+    refl_name: str,
+    radar_band: str = "C",
+    correct_attenuation: bool = False,
+    kdp_name: Union[str, None] = "KDP",
 ) -> List[xr.Dataset]:
     """
     Read ground radar data. If 2 files provided, then it will compute the
@@ -399,6 +408,13 @@ def read_radar(
         Ground radar input file.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
+    radar_band: str
+        Ground radar frequency band for reflectivity conversion. S, C, and X
+        supported.
+    correct_attenuation: bool
+        Should we correct for C- or X-band ground radar attenuation.
+    kdp_name: Optional[str]
+        Name of the KDP field in the ground radar data for attenuation correction.
 
     Returns:
     ========

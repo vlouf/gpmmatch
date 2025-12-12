@@ -11,7 +11,7 @@ Various utilities for correction and conversion of satellite data.
     :toctree: generated/
 
     compute_gaussian_curvature
-    convert_sat_refl_to_gr_band    
+    convert_sat_refl_to_gr_band
     correct_parallax
     attenuation_correction_zphi
     attenuation_correction_gunn_east
@@ -86,7 +86,7 @@ def convert_gpmrefl_grband_dfr(refl_gpm: np.ndarray, radar_band: str) -> np.ndar
     return refl_gpm + dfr(refl_gpm)
 
 
-def attenuation_correction_zphi(zh: np.ndarray, kdp: np.ndarray, dr: float=1, wavelength: str='C') -> np.ndarray:
+def attenuation_correction_zphi(zh: np.ndarray, kdp: np.ndarray, dr: float = 1, wavelength: str = "C") -> np.ndarray:
     """
     Attenuation correction using the ZPHI method.
 
@@ -104,17 +104,17 @@ def attenuation_correction_zphi(zh: np.ndarray, kdp: np.ndarray, dr: float=1, wa
     Returns:
     --------
     zh_corrected : array
-        Attenuation-corrected horizontal reflectivity (dBZ)    
+        Attenuation-corrected horizontal reflectivity (dBZ)
     """
     if dr > 10:
         raise ValueError("Range gate spacing 'dr' seems too large (>10 km). Check input.")
 
-    if wavelength.upper() == 'C':
+    if wavelength.upper() == "C":
         # C-band coefficients (Bringi et al. 2001)
         alpha_h = 0.08  # coefficient for Ah = alpha * Kdp^beta
         beta_h = 0.93
 
-    elif wavelength.upper() == 'X':
+    elif wavelength.upper() == "X":
         # X-band coefficients (Park et al. 2005)
         alpha_h = 0.28
         beta_h = 0.95
@@ -129,10 +129,12 @@ def attenuation_correction_zphi(zh: np.ndarray, kdp: np.ndarray, dr: float=1, wa
     return zh_corrected
 
 
-def attenuation_correction_gunn_east(zh: np.ndarray, dr: float=1, wavelength: str='C', max_thld: float=10) -> np.ndarray:
+def attenuation_correction_gunn_east(
+    zh: np.ndarray, dr: float = 1, wavelength: str = "C", max_thld: float = 10
+) -> np.ndarray:
     """
     Attenuation correction using Gunn and East (1954) method.
-    This is based on the power-law relationship. 
+    This is based on the power-law relationship.
     Eq. 2.66 p 106 of radar meteorology by Henri Sauvagot.
 
     Parameters:
@@ -144,27 +146,27 @@ def attenuation_correction_gunn_east(zh: np.ndarray, dr: float=1, wavelength: st
     wavelength : str
         'C' for C-band or 'X' for X-band
     max_thld: float
-        Capped-attenuation correction to avoid blowing up the refl in dB. 
-        
+        Capped-attenuation correction to avoid blowing up the refl in dB.
+
     Returns:
     --------
     zh_corrected : array
         Attenuation-corrected reflectivity (dBZ)
     """
     if dr > 10:
-        raise ValueError("Range gate spacing 'dr' seems too large (>10 km). Check input.")    
-    if wavelength.upper() == 'C':
+        raise ValueError("Range gate spacing 'dr' seems too large (>10 km). Check input.")
+    if wavelength.upper() == "C":
         l = 5.5
-    elif wavelength.upper() == 'X':
+    elif wavelength.upper() == "X":
         l = 3.2
     else:
         raise ValueError("Wavelength must be 'C' or 'X'")
-    
+
     # Convert dBZ to linear Z (mm^6/m^3)
-    Z_linear = 10 ** (zh / 10.0)  
+    Z_linear = 10 ** (zh / 10.0)
     R = (Z_linear / 200) ** (1 / 1.6)
-    ap = 0.35e-2 * R ** 1.6 / (l ** 4) + 0.22e-2 * R / l
-    
+    ap = 0.35e-2 * R**1.6 / (l**4) + 0.22e-2 * R / l
+
     PIA_h = np.nancumsum(ap * dr, axis=1)
     PIA_h[PIA_h > max_thld / 2] = max_thld / 2
     Z_corrected = zh + 2 * PIA_h
