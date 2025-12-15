@@ -19,26 +19,104 @@ Please ensure you are using the appropriate branch and radar I/O backend for you
 
 ---
 
-## 🛠️ Libraries Needed
+## 🚀 Installation
 
-The following Python libraries are required to use `gpmmatch` (master branch with `pyodim` support, `pyart` branch with `pyart` support):
-
-- `numpy`
-- `pandas`
-- `netCDF4`
-- `xarray`
-- `dask`
-- `pyodim`
-
-You can install the core dependencies using pip:
+Install gpmmatch directly from the repository:
 
 ```bash
-pip install numpy pandas netCDF4 xarray dask
+pip install git+https://github.com/vlouf/gpmmatch.git
 ```
 
-## Example Jupyter Notebook
+Or clone and install locally:
 
-An example Jupyter notebook is available in the `example` directory. This notebook demonstrates how to use the `gpmmatch` library to a volume matching of GPM data against radar data. The notebook provides step-by-step instructions for downloading a sample of radar data from the Australian weather radar network archive. Finally, the notebook uses Matplotlib to create a plot of the results of the GPMmatch technique.
+```bash
+git clone https://github.com/vlouf/gpmmatch.git
+cd gpmmatch
+pip install .
+```
+
+## 🛠️ Dependencies
+
+The following Python libraries are required to use `gpmmatch` (automatically installed with the package):
+
+- `numpy` - Array operations and numerical computing
+- `scipy` - Scientific computing and spatial operations
+- `pandas` - Data manipulation and time handling
+- `h5py` - HDF5 file reading for GPM data
+- `netCDF4` - NetCDF file I/O
+- `xarray` - Multi-dimensional labeled arrays and datasets
+- `pyodim` - ODIM HDF5 radar format reader (master branch only)
+- `pyproj` - Cartographic projections and coordinate transformations
+
+**Python Version:** Requires Python 3.9 or later
+
+## ✨ Key Features
+
+- **Volume Matching**: Spatially and temporally match GPM satellite and ground radar observations
+- **Calibration Monitoring**: Real-time monitoring of weather radar network calibration using GPM as reference
+- **Phase-Aware DFR Conversion**: Advanced reflectivity conversion accounting for hydrometeor phase (ice, melting layer, liquid) using GPM bright band detection
+- **Attenuation Correction**: Built-in attenuation correction for C-band and X-band radars using:
+  - ZPHI method (preferred when KDP is available)
+  - Gunn-East method (fallback)
+- **Multi-Pass Processing**: Iterative volume matching with automatic offset computation and convergence detection
+- **Parallax Correction**: Automatic geometric correction for satellite viewing angle
+
+## 📓 Example Jupyter Notebook
+
+A comprehensive example Jupyter notebook is available in the [notebooks](notebooks/) directory:
+
+- **[notebooks/Example.ipynb](notebooks/Example.ipynb)**: Step-by-step tutorial demonstrating:
+  - How to perform volume matching of GPM data against ground radar data
+  - Downloading sample radar data from the Australian weather radar network archive
+  - Processing and analyzing the matched data
+  - Creating publication-quality plots using Matplotlib
+
+## 📖 Usage
+
+### Basic Volume Matching
+
+```python
+import gpmmatch
+
+# Perform volume matching
+matchset = gpmmatch.volume_matching(
+    gpmfile="GPM_data.HDF5",
+    grfile="radar_data.h5",
+    gr_beamwidth=1.0,
+    radar_band="C",
+    refl_name="DBZH",
+    fname_prefix="my_radar",
+    phase_aware_dfr=True,  # Use phase-aware DFR conversion
+    correct_attenuation=True  # Apply attenuation correction
+)
+```
+
+### Multi-Pass Processing with Offset Convergence
+
+```python
+# Multi-pass processing with automatic offset computation
+gpmmatch.vmatch_multi_pass(
+    gpmfile="GPM_data.HDF5",
+    grfile="radar_data.h5",
+    radar_band="C",
+    refl_name="DBZH",
+    fname_prefix="my_radar",
+    output_dir="./output",
+    offset_thld=0.5,  # Convergence threshold in dB
+    phase_aware_dfr=True
+)
+```
+
+### Key Parameters
+
+- `gpmfile`: Path to GPM HDF5 data file
+- `grfile`: Path to ground radar ODIM HDF5 file
+- `radar_band`: Radar frequency band ('S', 'C', or 'X')
+- `refl_name`: Name of reflectivity field in radar data (e.g., 'DBZH', 'corrected_reflectivity')
+- `gr_beamwidth`: Ground radar 3dB beamwidth in degrees
+- `phase_aware_dfr`: Enable phase-aware DFR conversion (recommended, default: True)
+- `correct_attenuation`: Apply attenuation correction for C/X-band (default: True)
+- `kdp_name`: Name of KDP field for ZPHI attenuation correction (default: 'KDP')
 
 ## Citation
 
@@ -60,6 +138,16 @@ BibTeX:
     pages=  "823 - 844",    
 }
 ```
+
+Other references for the reflectivity conversion:
+
+- Rain DFR: Louf, V., A. Protat, R. A. Warren, S. M. Collis, D. B. Wolff, S. Raunyiar, C. Jakob, and W. A. Petersen, 2019: An Integrated Approach to Weather Radar Calibration and Monitoring Using Ground Clutter and Satellite Comparisons. *J. Atmos. Oceanic Technol.*, **36**, 17–39, https://doi.org/10.1175/JTECH-D-18-0007.1
+
+- Ice scattering: Tyynelä, J., J. Leinonen, A. Moisseev, and T. Nousiainen, 2011: Radar Backscattering from Snowflakes: Comparison of Fractal, Aggregate, and Soft Spheroid Models. *J. Atmos. Oceanic Technol.*, **28**, 1365–1372, https://doi.org/10.1175/JTECH-D-11-00004.1
+
+- Ice scattering: Leinonen, J., 2014: High-level interface to T-matrix scattering calculations: architecture, capabilities and limitations. *Opt. Express*, **22**(2), 1655–1660, https://doi.org/10.1364/OE.22.001655
+
+- GPM bright band: Awaka, J., M. Le, V. Chandrasekar, N. Yoshida, T. Higashiuwatoko, T. Kubota, and T. Iguchi, 2016: Rain Type Classification Algorithm Module for GPM Dual-Frequency Precipitation Radar. *J. Atmos. Oceanic Technol.*, **33**, 1887–1898, https://doi.org/10.1175/JTECH-D-16-0016.1
 
 ## License
 
