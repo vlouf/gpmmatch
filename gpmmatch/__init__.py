@@ -17,7 +17,6 @@ from .gpmmatch import (
     MAX_OFFSET_THRESHOLD,
 )
 
-__version__ = "1.4.0"
 __author__ = "Valentin Louf"
 __email__ = "valentin.louf@bom.gov.au"
 

@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 29/05/2025
+@date: 12/12/2025
 
 .. autosummary::
     :toctree: generated/
@@ -99,6 +99,7 @@ def data_load_and_checks(
     refl_name: Union[str, None] = None,
     correct_attenuation: bool = True,
     radar_band: str = "C",
+    kdp_name: Union[str, None] = "KDP",
 ) -> Tuple[xr.Dataset, List[xr.Dataset]]:
     """
     Load GPM and Ground radar files and perform some initial checks:
@@ -120,6 +121,8 @@ def data_load_and_checks(
     radar_band: str
         Ground radar frequency band for reflectivity conversion. S, C, and X
         supported.
+    kdp_name: Optional[str]
+        Name of the KDP field in the ground radar data for attenuation correction.
 
     Returns:
     --------
@@ -197,7 +200,9 @@ def data_load_and_checks(
     gpmset.attrs["earth_gaussian_radius"] = gr_gaussian_radius
 
     # Time to read the ground radar data.
-    radar = read_radar(grfile, refl_name, radar_band=radar_band, correct_attenuation=correct_attenuation)
+    radar = read_radar(
+        grfile, refl_name, radar_band=radar_band, correct_attenuation=correct_attenuation, kdp_name=kdp_name
+    )
 
     return gpmset, radar
 
@@ -386,7 +391,11 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
 
 
 def read_radar(
-    grfile: str, refl_name: str, radar_band: str = "C", correct_attenuation: bool = False
+    grfile: str,
+    refl_name: str,
+    radar_band: str = "C",
+    correct_attenuation: bool = False,
+    kdp_name: Union[str, None] = "KDP",
 ) -> List[xr.Dataset]:
     """
     Read ground radar data. If 2 files provided, then it will compute the
@@ -399,6 +408,13 @@ def read_radar(
         Ground radar input file.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
+    radar_band: str
+        Ground radar frequency band for reflectivity conversion. S, C, and X
+        supported.
+    correct_attenuation: bool
+        Should we correct for C- or X-band ground radar attenuation.
+    kdp_name: Optional[str]
+        Name of the KDP field in the ground radar data for attenuation correction.
 
     Returns:
     ========
@@ -409,10 +425,23 @@ def read_radar(
     if nradar[-1].elevation.max() > 80:
         nradar.pop(-1)
 
-    for idx in range(len(nradar)):
-        if correct_attenuation:
-            if radar_band in ["X", "C"]:  # Correct attenuation of X or C bands.
-                corr_refl = correct.correct_attenuation(nradar[idx][refl_name].values, radar_band)
-                nradar[idx][refl_name].values = corr_refl
+    method = None
+    if correct_attenuation and radar_band in ["X", "C"]:  # Correct attenuation of X or C bands.
+        for idx, radar in enumerate(nradar):
+            zh = radar[refl_name].values.copy()
+            dr = 1e-3 * (radar.range.values[1] - radar.range.values[0])  # in km
+            if kdp_name in radar:
+                kdp = radar[kdp_name].values.copy()
+                kdp[np.isnan(kdp)] = 0
+                zh_corrected = correct.attenuation_correction_zphi(zh, kdp, dr=dr, wavelength=radar_band)
+                method = "ZPHI"
+            else:
+                zh_corrected = correct.attenuation_correction_gunn_east(zh, dr=dr, wavelength=radar_band)
+                method = "Gunn-East"
+
+            nradar[idx] = nradar[idx].merge({"ZH_ATTEN_CORR": (("azimuth", "range"), zh_corrected)})
+
+    if method is not None:
+        print(f"GR reflectivity corrected for attenuation using {method} in band {radar_band}")
 
     return nradar

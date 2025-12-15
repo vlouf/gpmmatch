@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 10/12/2025
+@date: 12/12/2025
 
 .. autosummary::
     :toctree: generated/
@@ -134,15 +134,23 @@ def get_gr_reflectivity(
     ground_radar_reflectivity = []
     pir_gr = []
 
+    using_corrected_field = False
     for radar in nradar:
-        refl = radar[refl_name].values - gr_offset
+        if "ZH_ATTEN_CORR" in radar.data_vars:
+            refl = radar["ZH_ATTEN_CORR"].values.copy() - gr_offset
+            using_corrected_field = True
+        else:
+            refl = radar[refl_name].values.copy() - gr_offset
         refl[refl < gr_refl_threshold] = np.nan
         refl = np.ma.masked_invalid(refl)
         ground_radar_reflectivity.append(refl)
 
-        dr = (radar.range[1] - radar.range[0]).values  # Range resolution in meters
+        dr = radar.range[1].values - radar.range[0].values  # Range resolution in meters
         pir = 10 * np.log10(np.cumsum((10 ** (refl / 10)).filled(0), axis=1) * dr)
         pir_gr.append(pir)
+
+    if using_corrected_field:
+        print("Using attenuation-corrected reflectivity field for ground radar.")
 
     return ground_radar_reflectivity, pir_gr
 
@@ -179,6 +187,7 @@ def volume_matching(
     correct_attenuation: bool = True,
     elevation_offset: Union[float, None] = None,
     fname_prefix: Union[str, None] = None,
+    kdp_name: Union[str, None] = "KDP",
 ) -> xr.Dataset:
     """
     Performs the volume matching of GPM satellite data to ground based radar.
@@ -209,6 +218,8 @@ def volume_matching(
         Adding an offset in case the elevation angle needs to be corrected.
     fname_prefix: str
         Name of the ground radar to use as label for the output file.
+    kdp_name: Optional[str]
+        Name of the KDP field in the ground radar data for attenuation correction.
 
     Returns:
     --------
@@ -224,6 +235,7 @@ def volume_matching(
         refl_name=refl_name,
         correct_attenuation=correct_attenuation,
         radar_band=radar_band,
+        kdp_name=kdp_name,
     )
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
@@ -392,7 +404,7 @@ def volume_matching(
         # Vectorized distance calculation
         dx = xradar_subset - x_mean
         dy = yradar_subset - y_mean
-        roi_gr_at_vol = np.sqrt(dx*dx + dy*dy)
+        roi_gr_at_vol = np.sqrt(dx * dx + dy * dy)
 
         # Get data using flat indices
         volgr_subset = volgr_list[jj].ravel()[indices_flat]
@@ -401,7 +413,7 @@ def volume_matching(
 
         # Weight calculation
         normalized_distance = roi_gr_at_vol / search_radius
-        w = volgr_subset * np.exp(-(normalized_distance ** 2))
+        w = volgr_subset * np.exp(-(normalized_distance**2))
 
         # Extract reflectivity
         refl_gpm = refl_gpm_raw[ii, epos]
@@ -421,8 +433,14 @@ def volume_matching(
         refl_gpm_compressed = refl_gpm.compressed()
         refl_gr_compressed = refl_gr_raw.compressed()
 
-        data["fmin_gpm"][ii, jj] = np.sum(refl_gpm_compressed > 0) / len(refl_gpm_compressed) if len(refl_gpm_compressed) > 0 else np.nan
-        data["fmin_gr"][ii, jj] = np.sum(refl_gr_compressed >= gr_refl_threshold) / len(refl_gr_compressed) if len(refl_gr_compressed) > 0 else np.nan
+        data["fmin_gpm"][ii, jj] = (
+            np.sum(refl_gpm_compressed > 0) / len(refl_gpm_compressed) if len(refl_gpm_compressed) > 0 else np.nan
+        )
+        data["fmin_gr"][ii, jj] = (
+            np.sum(refl_gr_compressed >= gr_refl_threshold) / len(refl_gr_compressed)
+            if len(refl_gr_compressed) > 0
+            else np.nan
+        )
 
         data["refl_gpm_raw"][ii, jj] = np.mean(refl_gpm_compressed) if len(refl_gpm_compressed) > 0 else np.nan
         data["refl_gpm_grband"][ii, jj] = np.ma.mean(refl_gpm_grband)
@@ -435,7 +453,9 @@ def volume_matching(
         # Weighted mean - avoid creating new masked arrays
         valid_mask = ~refl_gr_raw.mask if np.ma.is_masked(refl_gr_raw) else np.ones(len(refl_gr_raw), dtype=bool)
         if np.any(valid_mask):
-            data["refl_gr_weigthed"][ii, jj] = np.sum(w[valid_mask] * refl_gr_raw.data[valid_mask]) / np.sum(w[valid_mask])
+            data["refl_gr_weigthed"][ii, jj] = np.sum(w[valid_mask] * refl_gr_raw.data[valid_mask]) / np.sum(
+                w[valid_mask]
+            )
 
         data["refl_gr_raw"][ii, jj] = np.mean(refl_gr_compressed) if len(refl_gr_compressed) > 0 else np.nan
         data["pir_gr"][ii, jj] = np.ma.mean(pir_gr_flat)
@@ -527,6 +547,7 @@ def vmatch_multi_pass(
     fname_prefix: Union[str, None] = None,
     offset_thld: float = 0.5,
     output_dir: Union[str, None] = None,
+    kdp_name: Union[str, None] = "KDP",
 ) -> None:
     """
     Multi-pass volume matching driver function with offset computation.
@@ -561,6 +582,8 @@ def vmatch_multi_pass(
         Offset threshold (in dB) between GPM and GR to stop the iteration.
     output_dir: str
         Path to output directory.
+    kdp_name: Optional[str]
+        Name of the KDP field in the ground radar data for attenuation correction.
     """
 
     def _save(dset: xr.Dataset, output_directory: str) -> None:
@@ -591,6 +614,11 @@ def vmatch_multi_pass(
     if output_dir is None:
         output_dir = str(Path.cwd())
         print(f"No 'output_dir' defined. The output files will be saved {output_dir}")
+    if correct_attenuation and radar_band not in ["C", "X"]:
+        print(
+            f"Attenuation correction is only available for C- and X-band radars. Setting 'correct_attenuation' to False."
+        )
+        correct_attenuation = False
 
     # Generate output directories.
     output_dirs = {
@@ -614,6 +642,7 @@ def vmatch_multi_pass(
         "gr_rmax": gr_rmax,
         "gr_refl_threshold": gr_refl_threshold,
         "elevation_offset": elevation_offset,
+        "kdp_name": kdp_name,
     }
 
     # First pass
