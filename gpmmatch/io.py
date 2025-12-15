@@ -100,6 +100,7 @@ def data_load_and_checks(
     correct_attenuation: bool = True,
     radar_band: str = "C",
     kdp_name: Union[str, None] = "KDP",
+    phase_aware_dfr: bool = True,
 ) -> Tuple[xr.Dataset, List[xr.Dataset]]:
     """
     Load GPM and Ground radar files and perform some initial checks:
@@ -123,6 +124,10 @@ def data_load_and_checks(
         supported.
     kdp_name: Optional[str]
         Name of the KDP field in the ground radar data for attenuation correction.
+    phase_aware_dfr: bool
+        Use phase-aware DFR conversion that accounts for ice, melting layer, and
+        liquid precipitation phases using GPM bright band height. Default is True.
+        Set to False to use the simple polynomial DFR relationship.
 
     Returns:
     --------
@@ -168,7 +173,17 @@ def data_load_and_checks(
     )
 
     # Convert reflectivity band correction
-    reflgpm_grband = correct.convert_gpmrefl_grband_dfr(gpmset.zFactorCorrected.values, radar_band=radar_band)
+    if phase_aware_dfr:
+        # Use phase-aware DFR that accounts for ice, melting layer, and liquid phases
+        reflgpm_grband = correct.convert_gpmrefl_grband_phase_aware(
+            refl_gpm=gpmset.zFactorCorrected.values,
+            height_gpm=z_sr,
+            height_bb=gpmset.heightBB.values,
+            radar_band=radar_band,
+        )
+    else:
+        # Use simple polynomial DFR relationship (original method)
+        reflgpm_grband = correct.convert_gpmrefl_grband_dfr(gpmset.zFactorCorrected.values, radar_band=radar_band)
 
     gpmset = gpmset.merge(
         {
