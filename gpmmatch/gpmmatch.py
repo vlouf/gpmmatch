@@ -188,6 +188,7 @@ def volume_matching(
     elevation_offset: Union[float, None] = None,
     fname_prefix: Union[str, None] = None,
     kdp_name: Union[str, None] = "KDP",
+    phase_aware_dfr: bool = True,
 ) -> xr.Dataset:
     """
     Performs the volume matching of GPM satellite data to ground based radar.
@@ -220,6 +221,9 @@ def volume_matching(
         Name of the ground radar to use as label for the output file.
     kdp_name: Optional[str]
         Name of the KDP field in the ground radar data for attenuation correction.
+    phase_aware_dfr: bool
+        Use phase-aware DFR conversion that accounts for ice, melting layer, and
+        liquid precipitation phases using GPM bright band height. Default is True.
 
     Returns:
     --------
@@ -236,6 +240,7 @@ def volume_matching(
         correct_attenuation=correct_attenuation,
         radar_band=radar_band,
         kdp_name=kdp_name,
+        phase_aware_dfr=phase_aware_dfr,
     )
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
@@ -548,6 +553,7 @@ def vmatch_multi_pass(
     offset_thld: float = 0.5,
     output_dir: Union[str, None] = None,
     kdp_name: Union[str, None] = "KDP",
+    phase_aware_dfr: bool = True,
 ) -> None:
     """
     Multi-pass volume matching driver function with offset computation.
@@ -584,6 +590,9 @@ def vmatch_multi_pass(
         Path to output directory.
     kdp_name: Optional[str]
         Name of the KDP field in the ground radar data for attenuation correction.
+    phase_aware_dfr: bool
+        Use phase-aware DFR conversion that accounts for ice, melting layer, and
+        liquid precipitation phases using GPM bright band height. Default is True.
     """
 
     def _save(dset: xr.Dataset, output_directory: str) -> None:
@@ -643,6 +652,7 @@ def vmatch_multi_pass(
         "gr_refl_threshold": gr_refl_threshold,
         "elevation_offset": elevation_offset,
         "kdp_name": kdp_name,
+        "phase_aware_dfr": phase_aware_dfr,
     }
 
     # First pass

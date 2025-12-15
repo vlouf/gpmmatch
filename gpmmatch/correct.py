@@ -11,7 +11,8 @@ Various utilities for correction and conversion of satellite data.
     :toctree: generated/
 
     compute_gaussian_curvature
-    convert_sat_refl_to_gr_band
+    convert_gpmrefl_grband_dfr
+    convert_gpmrefl_grband_phase_aware
     correct_parallax
     attenuation_correction_zphi
     attenuation_correction_gunn_east
@@ -84,6 +85,108 @@ def convert_gpmrefl_grband_dfr(refl_gpm: np.ndarray, radar_band: str) -> np.ndar
         raise ValueError(f"Radar reflectivity band ({radar_band}) not supported.")
 
     return refl_gpm + dfr(refl_gpm)
+
+
+def convert_gpmrefl_grband_phase_aware(
+    refl_gpm: np.ndarray,
+    height_gpm: np.ndarray,
+    height_bb: np.ndarray,
+    radar_band: str,
+    bb_margin: float = 500.0,
+) -> np.ndarray:
+    """
+    Convert GPM Ku-band reflectivity to ground radar band using phase-aware DFR.
+
+    This function accounts for hydrometeor phase (ice, melting layer, or liquid)
+    by using the GPM bright band (melting layer) height. Different DFR relationships
+    are applied based on whether the radar gate is above, within, or below the
+    melting layer.
+
+    Parameters:
+    ===========
+    refl_gpm: np.ndarray
+        GPM Ku-band reflectivity field (dBZ). Shape: (nscan, nray, nbin)
+    height_gpm: np.ndarray
+        Height of each GPM gate (meters). Shape: (nscan, nray, nbin)
+    height_bb: np.ndarray
+        Bright band (melting layer) height from GPM (meters). Shape: (nscan, nray)
+        Values < 0 indicate no bright band detected (all rain or all ice)
+    radar_band: str
+        Ground radar frequency band. Possible values: 'S', 'C', or 'X'
+    bb_margin: float, optional
+        Vertical margin around bright band height to define melting layer (meters).
+        Default is 500m (±500m around heightBB defines the melting layer).
+
+    Returns:
+    ========
+    refl_grband: np.ndarray
+        Reflectivity converted from Ku-band to ground radar band (dBZ).
+        Same shape as refl_gpm.
+
+    References:
+    ===========
+    - Rain DFR coefficients from Louf et al. (2019) J. Atmos. Oceanic Technol.
+    - Ice scattering theory: Tyynelä et al. (2011), Leinonen (2014)
+    - GPM bright band detection: Awaka et al. (2016)
+    """
+    if radar_band not in ["S", "C", "X"]:
+        raise ValueError(f"Radar reflectivity band ({radar_band}) not supported. Use 'S', 'C', or 'X'.")
+
+    # Define rain DFR polynomial coefficients (from Louf et al. 2019)
+    if radar_band == "S":
+        rain_cof = np.array([2.01236803e-07, -6.50694273e-06, 1.10885533e-03, -6.47985914e-02, -7.46518423e-02])
+    elif radar_band == "C":
+        rain_cof = np.array([1.21547932e-06, -1.23266138e-04, 6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
+    elif radar_band == "X":
+        rain_cof = np.array([1.21547932e-06, -1.23266138e-04, 6.38562875e-03, -1.52248868e-01, 5.33556919e-01])
+        rain_cof = rain_cof * (3.2 / 5.5)
+
+    rain_dfr = np.poly1d(rain_cof)
+
+    # Ice DFR - smaller frequency dependence for ice particles
+    # Based on Mie scattering theory for ice spheres
+    # Ice has less frequency-dependent scattering than rain
+    ice_dfr_offset = {
+        'S': 0.3,   # dB - small positive offset for S-band
+        'C': 0.5,   # dB - moderate offset for C-band
+        'X': 0.8    # dB - larger offset for X-band
+    }
+
+    refl_grband = np.full_like(refl_gpm, np.nan, dtype=np.float64)
+    # Expand heightBB to match 3D shape (nscan, nray, nbin)
+    height_bb_3d = np.broadcast_to(height_bb[..., np.newaxis], refl_gpm.shape)
+
+    no_bb_mask = height_bb_3d < 0
+    liquid_mask = (height_bb_3d >= 0) & (height_gpm < (height_bb_3d - bb_margin))
+    ice_mask = (height_bb_3d >= 0) & (height_gpm > (height_bb_3d + bb_margin))
+    melting_mask = (height_bb_3d >= 0) & (height_gpm >= (height_bb_3d - bb_margin)) & (height_gpm <= (height_bb_3d + bb_margin))
+
+    if np.any(no_bb_mask):
+        refl_grband[no_bb_mask] = refl_gpm[no_bb_mask] + rain_dfr(refl_gpm[no_bb_mask])
+
+    if np.any(liquid_mask):
+        refl_grband[liquid_mask] = refl_gpm[liquid_mask] + rain_dfr(refl_gpm[liquid_mask])
+
+    if np.any(ice_mask):
+        refl_grband[ice_mask] = refl_gpm[ice_mask] + ice_dfr_offset[radar_band]
+
+    if np.any(melting_mask):
+        # Calculate normalized height within melting layer (0 = bottom, 1 = top)
+        height_in_ml = height_gpm[melting_mask]
+        bb_height = height_bb_3d[melting_mask]
+
+        # Fraction of liquid (1 at bottom, 0 at top of melting layer)
+        liquid_fraction = 1.0 - (height_in_ml - (bb_height - bb_margin)) / (2 * bb_margin)
+        liquid_fraction = np.clip(liquid_fraction, 0, 1)
+
+        # Interpolate between ice and rain DFR
+        dfr_ice = ice_dfr_offset[radar_band]
+        dfr_rain = rain_dfr(refl_gpm[melting_mask])
+        dfr_mixed = liquid_fraction * dfr_rain + (1 - liquid_fraction) * dfr_ice
+
+        refl_grband[melting_mask] = refl_gpm[melting_mask] + dfr_mixed
+
+    return refl_grband
 
 
 def attenuation_correction_zphi(zh: np.ndarray, kdp: np.ndarray, dr: float = 1, wavelength: str = "C") -> np.ndarray:
