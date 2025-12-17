@@ -1,4 +1,4 @@
-image: gitlab.bom.gov.au:4567/containers/python:3.11
+image: "artiwon.bom.gov.au/containers/build-python-conda:4.1"
 
 stages:
   - test
