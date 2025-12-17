@@ -25,10 +25,11 @@ test:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-    expire_in: 7 days
-  when: on_success
+    expire_in: 30 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: on_success
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: on_success
     - when: manual
       allow_failure: true
