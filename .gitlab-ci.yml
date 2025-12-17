@@ -1,4 +1,4 @@
-image: "artiwon.bom.gov.au/containers/build-python-conda:4.1"
+image: gitlab.bom.gov.au:4567/containers/python:3.11
 
 stages:
   - test
@@ -12,8 +12,10 @@ cache:
 
 before_script:
   - python --version
-  - pip install --upgrade pip setuptools wheel
-  - pip install -e . --no-build-isolation
+  - conda list  # Check what's already installed in the conda environment
+  - python -m pip install --upgrade pip setuptools wheel
+  - pip install pytest pytest-cov  # Install test dependencies
+  - pip install -e . --no-build-isolation --no-deps  # Install package without dependencies
 
 test:
   stage: test
