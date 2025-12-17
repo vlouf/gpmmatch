@@ -1,4 +1,4 @@
-image: "py37"
+image: "fedora"
 
 stages:
   - test
