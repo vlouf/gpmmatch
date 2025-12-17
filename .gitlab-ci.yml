@@ -13,7 +13,7 @@ cache:
 before_script:
   - python --version
   - pip install --upgrade pip setuptools wheel
-  - pip install -e .
+  - pip install -e . --no-build-isolation
 
 test:
   stage: test
