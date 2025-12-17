@@ -12,8 +12,8 @@ cache:
 
 before_script:
   - python --version
-  - pip install --upgrade pip
-  - pip install -e ".[dev]"  # Install package with dev dependencies
+  - pip install --upgrade pip setuptools wheel
+  - pip install -e .
 
 test:
   stage: test
@@ -25,7 +25,7 @@ test:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-    expire_in: 30 days
+    expire_in: 7 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push"'
       when: on_success
