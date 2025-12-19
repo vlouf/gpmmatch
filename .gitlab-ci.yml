@@ -12,9 +12,12 @@ cache:
 
 before_script:
   - python --version
-  - conda list  # Check what's already installed in the conda environment
-  - python -m pip install --upgrade pip setuptools wheel
-  - pip install pytest pytest-cov  # Install test dependencies
+  - conda env list  # List available pre-built environments
+  - conda list  # Check what's already installed in the current conda environment
+  # Install dependencies via conda-forge instead of pip
+  - conda install -c conda-forge numpy scipy pandas h5py netcdf4 xarray pyproj pytest pytest-cov -y
+  # Install pyodim via pip only if not available in conda-forge
+  - pip install pyodim
   - pip install -e . --no-build-isolation --no-deps  # Install package without dependencies
 
 test:
