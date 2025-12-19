@@ -13,7 +13,7 @@ cache:
 before_script:
   - python --version
   - conda env list  # List available pre-built environments
-  - conda activate py311
+  - source activate py311
   - conda list  # Check what's already installed in the current conda environment
   # Install dependencies via conda-forge instead of pip
   - conda install -c conda-forge numpy scipy pandas h5py netcdf4 xarray pyproj pytest pytest-cov -y
