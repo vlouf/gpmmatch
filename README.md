@@ -50,6 +50,42 @@ The following Python libraries are required to use `gpmmatch` (automatically ins
 
 **Python Version:** Requires Python 3.9 or later
 
+## Satellite Data
+
+This project uses satellite precipitation products from **TRMM** and **GPM**. Data can be requested from NASA’s PPS STORM interface:
+
+**https://storm.pps.eosdis.nasa.gov/storm/data/Service.jsp?serviceName=RestrictedOrder**
+
+You must register before submitting an order. After entering your pre‑registered email address, configure your request using the following options:
+
+### Order configuration
+
+- **Order type:** `Standalone order`
+- **Coincidence:** `None` or `Satellite–Ground Validation Site`
+- **Options:**
+  - Enable **Subset Geographic Area**
+  - Choose **Subset Geographically**  
+    *(leave “Include only swaths with…” blank)*
+  - Enable **Parameter Subsetting**
+- **Product Type:**
+  - For **GPM**, select algorithm **2AKu** and check the associated box.
+  - For **TRMM**, submit two separate orders: **2A23** and **2A25**.  
+    *(If you only need GPM, you can ignore this.)*
+- **Temporal Criteria:** Set the date range for your analysis period.
+- **Special Area of Interest:**  
+  Define the geographic bounds of your domain (should cover the 150 km radar range). Assign a **Location Alias**.
+- **Parameter Subset:**  
+  Select the following fields:
+  - From **scanStatus**: `dataQuality`
+  - From **PRE**: `landSurfaceType`, `flagPrecip`
+  - From **CSF**: `flagBB`, `heightBB`, `widthBB`, `qualityBB`, `typePrecip`, `qualityTypePrecip`
+  - From **SLV**: `zFactorCorrected` (V06) or `zFactorFinal` (V07)
+  Provide an identifier, choose **No** for “Generate Read and Write routines”, and set the output format to **HDF**.
+- **Search Results:** Select all files using the top‑level checkbox.
+- **Script Type:** Choose your preferred download method (e.g., `FTP URL`).
+
+Submitting the form will generate the download script or links for your selected data.
+
 ## ✨ Key Features
 
 - **Volume Matching**: Spatially and temporally match GPM satellite and ground radar observations
