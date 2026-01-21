@@ -1,0 +1,41 @@
+image: "artiwon.bom.gov.au/containers/build-python-conda:4.1"
+
+stages:
+  - test
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+
+before_script:
+  - python --version
+  - conda env list  # List available pre-built environments
+  - source activate py311
+  - conda list  # Check what's already installed in the current conda environment
+  # Install dependencies via conda-forge instead of pip
+  - conda install -c conda-forge numpy scipy pandas h5py netcdf4 xarray pyproj pytest pytest-cov -y
+  # Install pyodim via pip only if not available in conda-forge
+  - pip install pyodim
+  - pip install -e . --no-build-isolation --no-deps  # Install package without dependencies
+
+test:
+  stage: test
+  script:
+    - pytest --verbose --cov=gpmmatch --cov-report=term --cov-report=xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: on_success
+    - when: manual
+      allow_failure: true
