@@ -441,11 +441,7 @@ def volume_matching(
         data["fmin_gpm"][ii, jj] = (
             np.sum(refl_gpm_compressed > 0) / len(refl_gpm_compressed) if len(refl_gpm_compressed) > 0 else np.nan
         )
-        data["fmin_gr"][ii, jj] = (
-            np.sum(refl_gr_compressed >= gr_refl_threshold) / len(refl_gr_compressed)
-            if len(refl_gr_compressed) > 0
-            else np.nan
-        )
+        data["fmin_gr"][ii, jj] = np.sum(~refl_gr_raw.mask & (refl_gr_raw >= gr_refl_threshold)) / len(refl_gr_raw)
 
         data["refl_gpm_raw"][ii, jj] = np.mean(refl_gpm_compressed) if len(refl_gpm_compressed) > 0 else np.nan
         data["refl_gpm_grband"][ii, jj] = np.ma.mean(refl_gpm_grband)
