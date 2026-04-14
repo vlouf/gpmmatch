@@ -6,7 +6,7 @@ latest version of TRMM data.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 12/12/2025
+@date: 14/04/2026
 
 .. autosummary::
     :toctree: generated/
@@ -23,7 +23,7 @@ import datetime
 import warnings
 import itertools
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,7 @@ import xarray as xr
 from scipy.spatial import cKDTree
 
 from .correct import get_offset
-from .io import data_load_and_checks
+from .io import data_load_and_checks, BBox
 from .default import get_metadata
 
 # Constants
@@ -189,6 +189,7 @@ def volume_matching(
     fname_prefix: Union[str, None] = None,
     kdp_name: Union[str, None] = "KDP",
     phase_aware_dfr: bool = True,
+    bbox: Optional[BBox] = None,
 ) -> xr.Dataset:
     """
     Performs the volume matching of GPM satellite data to ground based radar.
@@ -224,6 +225,8 @@ def volume_matching(
     phase_aware_dfr: bool
         Use phase-aware DFR conversion that accounts for ice, melting layer, and
         liquid precipitation phases using GPM bright band height. Default is True.
+    bbox: tuple of (lat_min, lat_max, lon_min, lon_max), optional
+        Bounding box to subset full-orbit GPM V08 files. Ignored for V07.
 
     Returns:
     --------
@@ -241,6 +244,7 @@ def volume_matching(
         radar_band=radar_band,
         kdp_name=kdp_name,
         phase_aware_dfr=phase_aware_dfr,
+        bbox=bbox,
     )
 
     nprof = gpmset.precip_in_gr_domain.values.sum()
@@ -550,6 +554,7 @@ def vmatch_multi_pass(
     output_dir: Union[str, None] = None,
     kdp_name: Union[str, None] = "KDP",
     phase_aware_dfr: bool = True,
+    bbox: Optional[BBox] = None,
 ) -> None:
     """
     Multi-pass volume matching driver function with offset computation.
@@ -589,6 +594,8 @@ def vmatch_multi_pass(
     phase_aware_dfr: bool
         Use phase-aware DFR conversion that accounts for ice, melting layer, and
         liquid precipitation phases using GPM bright band height. Default is True.
+    bbox: tuple of (lat_min, lat_max, lon_min, lon_max), optional
+        Bounding box to subset full-orbit GPM V08 files. Ignored for V07.
     """
 
     def _save(dset: xr.Dataset, output_directory: str) -> None:
@@ -649,6 +656,7 @@ def vmatch_multi_pass(
         "elevation_offset": elevation_offset,
         "kdp_name": kdp_name,
         "phase_aware_dfr": phase_aware_dfr,
+        "bbox": bbox,
     }
 
     # First pass

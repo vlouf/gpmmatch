@@ -6,7 +6,7 @@ volume_matching.
 @author: Valentin Louf <valentin.louf@bom.gov.au>
 @institutions: Monash University and the Australian Bureau of Meteorology
 @creation: 17/02/2020
-@date: 12/12/2025
+@date: 14/04/2026
 
 .. autosummary::
     :toctree: generated/
@@ -18,6 +18,8 @@ volume_matching.
     get_ground_radar_attributes
     get_gpm_orbit
     read_GPM
+    read_GPM_v07
+    read_GPM_v08
     read_radars
 """
 
@@ -26,7 +28,7 @@ import copy
 import datetime
 import warnings
 
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 from collections import OrderedDict
 
 import h5py
@@ -38,6 +40,9 @@ import xarray as xr
 
 from . import correct
 from . import default
+
+# Type alias for bounding box: (lat_min, lat_max, lon_min, lon_max)
+BBox = Tuple[float, float, float, float]
 
 
 class NoPrecipitationError(Exception):
@@ -101,6 +106,7 @@ def data_load_and_checks(
     radar_band: str = "C",
     kdp_name: Union[str, None] = "KDP",
     phase_aware_dfr: bool = True,
+    bbox: Optional[BBox] = None,
 ) -> Tuple[xr.Dataset, List[xr.Dataset]]:
     """
     Load GPM and Ground radar files and perform some initial checks:
@@ -112,9 +118,6 @@ def data_load_and_checks(
         GPM data file.
     grfile: str
         Ground radar input file.
-    grfile2: str
-        (Optional) Second ground radar input file to compute grid displacement
-        and advection.
     refl_name: str
         Name of the reflectivity field in the ground radar data.
     correct_attenuation: bool
@@ -128,6 +131,10 @@ def data_load_and_checks(
         Use phase-aware DFR conversion that accounts for ice, melting layer, and
         liquid precipitation phases using GPM bright band height. Default is True.
         Set to False to use the simple polynomial DFR relationship.
+    bbox: tuple of (lat_min, lat_max, lon_min, lon_max), optional
+        Bounding box to subset full-orbit GPM V08 files. Required for V08
+        files to avoid loading the entire orbit into memory. Ignored for
+        V07 (HDF5) files which are already regional subsets.
 
     Returns:
     --------
@@ -139,7 +146,7 @@ def data_load_and_checks(
     if refl_name is None:
         raise ValueError("Reflectivity field name not given.")
 
-    gpmset = read_GPM(gpmfile)
+    gpmset = read_GPM(gpmfile, bbox=bbox)
     grlon, grlat, gralt, rmin, rmax = get_ground_radar_attributes(grfile)
 
     # Reproject satellite coordinates onto ground radar
@@ -224,6 +231,8 @@ def data_load_and_checks(
 
 def get_gpm_orbit(gpmfile: str) -> int:
     """
+    Extract the GPM Granule Number from a GPM file (V07 HDF5 or V08 netCDF).
+
     Parameters:
     -----------
     gpmfile: str
@@ -235,9 +244,17 @@ def get_gpm_orbit(gpmfile: str) -> int:
         GPM Granule Number.
     """
     try:
-        with h5py.File(gpmfile) as hid:
-            grannb = [s for s in hid.attrs["FileHeader"].split() if b"GranuleNumber" in s][0].decode("utf-8")
+        if gpmfile.endswith(".nc"):
+            import netCDF4
+
+            with netCDF4.Dataset(gpmfile) as nc:
+                file_header = nc.getncattr("FileHeader")
+            grannb = [s for s in file_header.split("\n") if "GranuleNumber" in s][0]
             orbit = re.findall("[0-9]{3,}", grannb)[0]
+        else:
+            with h5py.File(gpmfile) as hid:
+                grannb = [s for s in hid.attrs["FileHeader"].split() if b"GranuleNumber" in s][0].decode("utf-8")
+                orbit = re.findall("[0-9]{3,}", grannb)[0]
     except Exception:
         return 0
 
@@ -280,14 +297,47 @@ def get_ground_radar_attributes(grfile: str) -> Tuple[float, float, float, float
     return grlon, grlat, gralt, rmin, rmax
 
 
-def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
+# =============================================================================
+# GPM readers
+# =============================================================================
+
+
+def read_GPM(infile: str, refl_min_thld: float = 0, bbox: Optional[BBox] = None) -> xr.Dataset:
     """
-    Read GPM data and organize them into a Dataset.
+    Read GPM data file (V07 HDF5 or V08 netCDF) and return a standardised
+    xarray Dataset.
+
+    Dispatches to the appropriate format-specific reader based on file
+    extension.
 
     Parameters:
     -----------
-    gpmfile: str
-        GPM data file.
+    infile: str
+        GPM data file (.HDF5 for V07, .nc for V08).
+    refl_min_thld: float
+        Minimum threshold applied to GPM reflectivity.
+    bbox: tuple of (lat_min, lat_max, lon_min, lon_max), optional
+        Bounding box to subset full-orbit V08 files. Ignored for V07.
+
+    Returns:
+    --------
+    dset: xr.Dataset
+        GPM dataset with standardised variable names and dimensions.
+    """
+    if infile.endswith(".nc"):
+        return read_GPM_v08(infile, refl_min_thld=refl_min_thld, bbox=bbox)
+    else:
+        return read_GPM_v07(infile, refl_min_thld=refl_min_thld)
+
+
+def read_GPM_v07(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
+    """
+    Read GPM V07 (HDF5) data and organize them into a Dataset.
+
+    Parameters:
+    -----------
+    infile: str
+        GPM data file (HDF5).
     refl_min_thld: float
         Minimum threshold applied to GPM reflectivity.
 
@@ -378,6 +428,196 @@ def read_GPM(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
                 date["Minute"],
                 date["Second"],
                 date["MilliSecond"],
+            )
+        ],
+        dtype="datetime64",
+    )
+
+    data["nscan"] = (("nscan"), dtime)
+    data["nray"] = (("nray"), nray)
+    data["nbin"] = (("nbin"), nbin)
+
+    dset = xr.Dataset(OrderedDict(sorted(data.items())))
+
+    dset.nray.attrs = {"units": "degree", "description": "Deviation from Nadir"}
+    dset.nbin.attrs = {"units": "m", "description": "Downward from 0: TOA to Earth ellipsoid."}
+    dset.attrs["altitude"] = 407000
+    dset.attrs["altitude_units"] = "m"
+    dset.attrs["altitude_description"] = "GPM orbit"
+    dset.attrs["beamwidth"] = 0.71
+    dset.attrs["beamwidth_units"] = "degree"
+    dset.attrs["beamwidth_description"] = "GPM beamwidth"
+    dset.attrs["dr"] = 125
+    dset.attrs["dr_units"] = "m"
+    dset.attrs["dr_description"] = "GPM gate spacing"
+    dset.attrs["orbit"] = get_gpm_orbit(infile)
+
+    return dset
+
+
+def read_GPM_v08(infile: str, refl_min_thld: float = 0, bbox: Optional[BBox] = None) -> xr.Dataset:
+    """
+    Read GPM V08 (netCDF-4) data and organize into a Dataset matching the
+    structure produced by read_GPM_v07.
+
+    V08 files contain the full orbit (~8000 scans). A bounding box is used
+    to subset the data to the region of interest, keeping memory usage
+    manageable.
+
+    Parameters:
+    -----------
+    infile: str
+        GPM V08 netCDF data file.
+    refl_min_thld: float
+        Minimum threshold applied to GPM reflectivity.
+    bbox: tuple of (lat_min, lat_max, lon_min, lon_max), optional
+        Geographic bounding box to subset the orbit. If None, the full
+        orbit is loaded (warning: high memory usage).
+
+    Returns:
+    --------
+    dset: xr.Dataset
+        GPM dataset with the same structure as read_GPM_v07 output.
+    """
+    import netCDF4
+
+    if refl_min_thld != 0:
+        warnings.warn("Tests have shown that no threshold should be applied to GPM reflectivity!", UserWarning)
+
+    master_key = "FS"
+
+    # ------------------------------------------------------------------
+    # Step 1: Read lat/lon and apply bounding box to find relevant scans.
+    # This is lightweight — only 2D arrays (nscan, nray).
+    # ------------------------------------------------------------------
+    with netCDF4.Dataset(infile) as nc:
+        grp = nc[master_key]
+        lat = grp["Latitude"][:]
+        lon = grp["Longitude"][:]
+
+    if bbox is not None:
+        lat_min, lat_max, lon_min, lon_max = bbox
+        # A scan is relevant if ANY ray falls within the bounding box.
+        in_bbox = (lat >= lat_min) & (lat <= lat_max) & (lon >= lon_min) & (lon <= lon_max)
+        scan_mask = np.any(in_bbox, axis=1)
+
+        if not np.any(scan_mask):
+            raise NoPrecipitationError(
+                f"GPM orbit does not cross the bounding box "
+                f"(lat: {lat_min} to {lat_max}, lon: {lon_min} to {lon_max})."
+            )
+
+        # Find contiguous range of scans (with a small margin for parallax).
+        scan_indices = np.where(scan_mask)[0]
+        idx_start = max(0, scan_indices[0] - 10)
+        idx_end = min(lat.shape[0], scan_indices[-1] + 11)
+        scan_slice = slice(idx_start, idx_end)
+
+        lat = lat[scan_slice]
+        lon = lon[scan_slice]
+        print(f"V08 bbox subset: scans {idx_start}–{idx_end} of {scan_mask.shape[0]} "
+              f"({idx_end - idx_start} scans retained).")
+    else:
+        scan_slice = slice(None)
+        warnings.warn(
+            "Loading full-orbit V08 GPM file without bounding box — "
+            "this will use significant memory.",
+            UserWarning,
+        )
+
+    # ------------------------------------------------------------------
+    # Step 2: Read all required fields from netCDF groups, sliced by scan.
+    # ------------------------------------------------------------------
+    data = dict()
+    date_fields = dict()
+
+    with netCDF4.Dataset(infile) as nc:
+        grp = nc[master_key]
+
+        # Lat/Lon (already loaded and sliced above)
+        data["Latitude"] = (("nscan", "nray"), np.ma.masked_equal(lat, -9999.9))
+        data["Longitude"] = (("nscan", "nray"), np.ma.masked_equal(lon, -9999.9))
+
+        # ScanTime
+        scan_time = grp["ScanTime"]
+        for field in ["Year", "Month", "DayOfMonth", "Hour", "Minute", "Second", "MilliSecond"]:
+            date_fields[field] = scan_time[field][scan_slice]
+
+        # PRE group: flagPrecip, zFactorMeasured, etc.
+        pre = grp["PRE"]
+        flagPrecip = pre["flagPrecip"][scan_slice]
+        data["flagPrecip"] = (
+            ("nscan", "nray"),
+            np.ma.masked_invalid(flagPrecip).filled(0).astype(bool),
+        )
+        zFactorMeasured = pre["zFactorMeasured"][scan_slice][:, :, ::-1]
+        zFactorMeasured[zFactorMeasured < 0] = np.nan
+        data["zFactorMeasured"] = (
+            ("nscan", "nray", "nbin"),
+            np.ma.masked_invalid(np.ma.masked_less_equal(zFactorMeasured, refl_min_thld)),
+        )
+
+        # CSF group: heightBB, qualityBB, typePrecip, qualityTypePrecip, flagShallowRain
+        csf = grp["CSF"]
+        for field in ["heightBB", "widthBB", "qualityBB", "qualityTypePrecip", "flagShallowRain", "flagBB"]:
+            raw = csf[field][scan_slice]
+            fv = csf[field]._FillValue
+            data[field] = (("nscan", "nray"), np.ma.masked_equal(raw, fv))
+
+        typePrecip = csf["typePrecip"][scan_slice]
+        data["typePrecip"] = (("nscan", "nray"), typePrecip / 10000000)
+
+        # SLV group: zFactorFinal (replaces zFactorCorrected in V08)
+        slv = grp["SLV"]
+        zFactorFinal = slv["zFactorFinal"][scan_slice][:, :, ::-1]
+        zFactorFinal[zFactorFinal < 0] = np.nan
+        data["zFactorCorrected"] = (
+            ("nscan", "nray", "nbin"),
+            np.ma.masked_invalid(np.ma.masked_less_equal(zFactorFinal, refl_min_thld)),
+        )
+
+        # VER group
+        ver = grp["VER"]
+        for field in ["heightZeroDeg"]:
+            raw = ver[field][scan_slice]
+            fv = ver[field]._FillValue
+            data[field] = (("nscan", "nray"), np.ma.masked_equal(raw, fv))
+
+        # PRE group: additional fields
+        for field in ["elevation", "landSurfaceType", "binRealSurface", "binStormTop", "heightStormTop"]:
+            raw = pre[field][scan_slice]
+            fv = pre[field]._FillValue
+            data[field] = (("nscan", "nray"), np.ma.masked_equal(raw, fv))
+
+    # ------------------------------------------------------------------
+    # Step 3: Build quality indicator (same logic as V07)
+    # ------------------------------------------------------------------
+    quality = np.zeros(data["heightBB"][-1].shape, dtype=np.int32)
+    quality[((data["qualityBB"][-1] == 0) | (data["qualityBB"][-1] == 1)) & (data["qualityTypePrecip"][-1] == 1)] = 1
+    quality[(data["qualityBB"][-1] > 1) | (data["qualityTypePrecip"][-1] > 1)] = 2
+    data["quality"] = (data["heightBB"][0], quality)
+
+    # ------------------------------------------------------------------
+    # Step 4: Generate dimensions and derived fields (same as V07)
+    # ------------------------------------------------------------------
+    nray = np.linspace(-17.04, 17.04, 49)
+    nbin = np.arange(0, 125 * 176, 125)
+
+    R, A = np.meshgrid(nbin, nray)
+    distance_from_sr = 407000 / np.cos(np.deg2rad(A)) - R
+    data["distance_from_sr"] = (("nray", "nbin"), distance_from_sr)
+
+    dtime = np.array(
+        [
+            datetime.datetime(*d)
+            for d in zip(
+                date_fields["Year"],
+                date_fields["Month"],
+                date_fields["DayOfMonth"],
+                date_fields["Hour"],
+                date_fields["Minute"],
+                date_fields["Second"],
+                date_fields["MilliSecond"],
             )
         ],
         dtype="datetime64",

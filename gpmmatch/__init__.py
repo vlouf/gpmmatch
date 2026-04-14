@@ -17,10 +17,13 @@ from .gpmmatch import (
     MAX_OFFSET_THRESHOLD,
 )
 
+from .io import BBox
+
 __author__ = "Valentin Louf"
 __email__ = "valentin.louf@bom.gov.au"
 
 __all__ = [
+    "BBox",
     "NoRainError",
     "generate_filename",
     "get_radar_coordinates",
