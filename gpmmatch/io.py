@@ -441,7 +441,7 @@ def read_GPM_v07(infile: str, refl_min_thld: float = 0) -> xr.Dataset:
 
     dset.nray.attrs = {"units": "degree", "description": "Deviation from Nadir"}
     dset.nbin.attrs = {"units": "m", "description": "Downward from 0: TOA to Earth ellipsoid."}
-    dset.attrs["altitude"] = 407000
+    dset.attrs["altitude"] = 435000
     dset.attrs["altitude_units"] = "m"
     dset.attrs["altitude_description"] = "GPM orbit"
     dset.attrs["beamwidth"] = 0.71
@@ -558,13 +558,20 @@ def read_GPM_v08(infile: str, refl_min_thld: float = 0, bbox: Optional[BBox] = N
         )
 
         # CSF group: heightBB, qualityBB, typePrecip, qualityTypePrecip, flagShallowRain
+        # V08 uses -1111 as a "not detected" sentinel in addition to the
+        # netCDF _FillValue (-9999). We mask both.
         csf = grp["CSF"]
         for field in ["heightBB", "widthBB", "qualityBB", "qualityTypePrecip", "flagShallowRain", "flagBB"]:
             raw = csf[field][scan_slice]
             fv = csf[field]._FillValue
-            data[field] = (("nscan", "nray"), np.ma.masked_equal(raw, fv))
+            masked = np.ma.masked_equal(raw, fv)
+            masked = np.ma.masked_equal(masked, -1111)
+            data[field] = (("nscan", "nray"), masked)
 
         typePrecip = csf["typePrecip"][scan_slice]
+        fv_tp = csf["typePrecip"]._FillValue
+        typePrecip = np.ma.masked_equal(typePrecip, fv_tp)
+        typePrecip = np.ma.masked_equal(typePrecip, -1111)
         data["typePrecip"] = (("nscan", "nray"), typePrecip / 10000000)
 
         # SLV group: zFactorFinal (replaces zFactorCorrected in V08)
@@ -591,10 +598,18 @@ def read_GPM_v08(infile: str, refl_min_thld: float = 0, bbox: Optional[BBox] = N
 
     # ------------------------------------------------------------------
     # Step 3: Build quality indicator (same logic as V07)
+    # Use .filled() to handle masked sentinel values: masked entries
+    # get quality=2 (unknown/bad) which is the safe default.
     # ------------------------------------------------------------------
+    qbb = data["qualityBB"][-1]
+    qtp = data["qualityTypePrecip"][-1]
+    # Fill masked values with a value that maps to quality=2 (bad)
+    qbb_filled = np.ma.filled(qbb, fill_value=99)
+    qtp_filled = np.ma.filled(qtp, fill_value=99)
+
     quality = np.zeros(data["heightBB"][-1].shape, dtype=np.int32)
-    quality[((data["qualityBB"][-1] == 0) | (data["qualityBB"][-1] == 1)) & (data["qualityTypePrecip"][-1] == 1)] = 1
-    quality[(data["qualityBB"][-1] > 1) | (data["qualityTypePrecip"][-1] > 1)] = 2
+    quality[((qbb_filled == 0) | (qbb_filled == 1)) & (qtp_filled == 1)] = 1
+    quality[(qbb_filled > 1) | (qtp_filled > 1)] = 2
     data["quality"] = (data["heightBB"][0], quality)
 
     # ------------------------------------------------------------------
@@ -631,7 +646,7 @@ def read_GPM_v08(infile: str, refl_min_thld: float = 0, bbox: Optional[BBox] = N
 
     dset.nray.attrs = {"units": "degree", "description": "Deviation from Nadir"}
     dset.nbin.attrs = {"units": "m", "description": "Downward from 0: TOA to Earth ellipsoid."}
-    dset.attrs["altitude"] = 407000
+    dset.attrs["altitude"] = 435000
     dset.attrs["altitude_units"] = "m"
     dset.attrs["altitude_description"] = "GPM orbit"
     dset.attrs["beamwidth"] = 0.71
