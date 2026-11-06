@@ -691,7 +691,7 @@ def read_radar(
     radar: List[xr.Dataset]
         Radar dataset
     """
-    nradar = pyodim.read_odim(grfile, lazy_load=False)
+    nradar = pyodim.read_odim(grfile)
     if nradar[-1].elevation.max() > 80:
         nradar.pop(-1)
 

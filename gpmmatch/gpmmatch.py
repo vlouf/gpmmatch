@@ -146,7 +146,9 @@ def get_gr_reflectivity(
         ground_radar_reflectivity.append(refl)
 
         dr = radar.range[1].values - radar.range[0].values  # Range resolution in meters
-        pir = 10 * np.log10(np.cumsum((10 ** (refl / 10)).filled(0), axis=1) * dr)
+        with np.errstate(divide="ignore"):  # log10(0) before first valid gate -> -inf, masked below
+            pir = 10 * np.log10(np.cumsum((10 ** (refl / 10)).filled(0), axis=1) * dr)
+        pir = np.ma.masked_invalid(pir)
         pir_gr.append(pir)
 
     if using_corrected_field:
@@ -295,7 +297,8 @@ def volume_matching(
     reflectivity_gpm_grband = np.ma.masked_invalid(gpm_refl_grband[position_precip_domain])
 
     # Compute Path-integrated reflectivities
-    pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * dr)
+    with np.errstate(divide="ignore"):  # log10(0) before first valid gate -> -inf, masked below
+        pir_gpm = 10 * np.log10(np.cumsum((10 ** (np.ma.masked_invalid(refl_gpm_raw) / 10)).filled(0), axis=-1) * dr)
     pir_gpm = np.ma.masked_invalid(pir_gpm)
 
     # Pre-compute and cache everything
