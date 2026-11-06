@@ -32,7 +32,7 @@ dependencies = [
     "h5py",
     "netCDF4",
     "xarray",
-    "pyodim",
+    "pyodim>=0.7",
     "pyproj",
 ]
 
